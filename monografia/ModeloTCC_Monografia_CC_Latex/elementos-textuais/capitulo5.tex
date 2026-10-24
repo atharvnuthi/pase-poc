@@ -1,0 +1,369 @@
+% Gerado a partir de MONOGRAFIA_PASE.md. O texto foi transposto sem alterações.
+
+\chapter{Implementação e Validação}\label{cap:5}
+
+\section{Introdução}\label{sec:5.1}
+
+Uma arquitetura proposta precisa demonstrar que funciona. Para verificar a viabilidade da Arquitetura PASE, foi construída uma prova de conceito (\textit{Proof of Concept}, PoC) que implementa o núcleo das três camadas descritas no Capítulo~\ref{cap:4} e o aplica à evolução de um produto real. O objetivo da validação é demonstrar que as camadas funcionam encadeadas, de ponta a ponta, sob governança humana e com rastreabilidade integral.
+
+Este capítulo reúne implementação e validação porque as duas se informaram mutuamente. A implementação revelou falhas reais que motivaram ajustes na própria arquitetura, e esses ajustes são parte dos resultados. A Seção~\ref{sec:5.2} descreve a prova de conceito. A Seção~\ref{sec:5.3} apresenta o método de validação. As Seções~\ref{sec:5.4} e~\ref{sec:5.5} acompanham os dois fluxos centrais da arquitetura. A Seção~\ref{sec:5.6} reúne os resultados quantitativos, e a Seção~\ref{sec:5.7} os discute.
+
+\section{Implementação da Prova de Conceito}\label{sec:5.2}
+
+\subsection{Produto-alvo e Arquitetura Técnica}\label{sec:5.2.1}
+
+A prova de conceito separa dois sistemas. O FinTrack é o produto-alvo, um painel financeiro pessoal composto por uma interface em \textit{Next.js} e uma interface de programação em \textit{FastAPI}, com módulos de painel inicial, transações, orçamentos, metas de economia, relatórios e suporte. O PASE é o motor que evolui o FinTrack: um núcleo em \textit{FastAPI} sobre \textit{PostgreSQL} com a extensão \textit{pgvector}, organizado nas três camadas da arquitetura, acompanhado de um painel de controle para o operador humano. Os cinco serviços executam localmente em contêineres, e o FinTrack nunca é alvo de alterações fora do fluxo governado pelo PASE.
+
+Três decisões de implementação materializam diretamente os princípios do Capítulo~\ref{cap:4}. A primeira é que toda chamada a modelo de linguagem passa por um cliente único, que registra modelo, \textit{tokens}, duração e um identificador de rastreio, o que permite religar qualquer decisão do sistema à interação exata que a produziu. A segunda é que todo \textit{prompt} é um arquivo versionado, e não um texto embutido no código; a PoC conta com quinze \textit{prompts}, um para cada decisão delegada a modelo. A terceira é que cada decisão relevante gera um registro em banco, da proposta bruta à decisão humana final, incluindo cada transição de estado de cada tarefa.
+
+A PoC usa modelos distintos por etapa, de acordo com a natureza do trabalho. As etapas do funil de filtragem, que classificam textos curtos, usam um modelo de menor custo (\textit{gpt-4.1-mini}). A escrita de código usa um modelo especializado em programação (\textit{gpt-5.3-codex}). A revisão independente usa um terceiro modelo (\textit{gpt-5.5}), distinto do que escreveu o código. A busca semântica da Memória Histórica usa vetores gerados pelo modelo \textit{text-embedding-3-small}. Essa separação é uma aplicação direta do princípio do alinhamento entre arquitetura e tarefa.
+
+\subsection{Correspondência entre a Arquitetura e a Implementação}\label{sec:5.2.2}
+
+A PoC não implementa a arquitetura por completo. A prioridade foi construir o núcleo que permite percorrer as três camadas de ponta a ponta, deixando para trabalhos futuros os componentes que ampliam a arquitetura sem alterar seu regime de governança. O Quadro~\ref{quadro:3} delimita o que foi construído e verificado em cada camada e o que permaneceu fora do escopo da prova de conceito.
+
+\begin{quadro}[htb]
+\centering
+\caption{Componentes validados na PoC e escopo remanescente}
+\label{quadro:3}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Camada} & \textbf{Validado na PoC} & \textbf{Fora do escopo da PoC} \\
+\hline
+Tarefas & Seis origens de demanda (captação ativa e passiva, sugestões funcionais e de engenharia, geração exploratória e análise de lacunas); agrupamento de tickets por tema; normalização; Avaliador de Zonas Dinâmicas; Memória Histórica, Coerência Sistêmica e Qualificação; desvio autorizado para sugestões de engenharia; reavaliação de descartes & Prospecção competitiva; recompensa por contribuição; alternância periódica de modelos \\
+\hline
+Orquestração & Priorização com fator de urgência; ciclo de vida por estados com histórico de transições; pontos de decisão humana, inclusive sobre o plano; grafo de dependências com recusa de ciclos; reexecução e trava de custo preditiva; homologação; entrega em estágios (integração, versão candidata e produção); refazer e reverter tarefas; auditoria de código (por comando) & Pesos e limiares automáticos no grafo; subgrafos; replanejamento automático de dependentes; agendamento periódico dos ciclos de manutenção \\
+\hline
+Execução & Planejamento e execução separados; critérios de aceite; isolamento por clone e ramo exclusivo; verificação automática (análise estática, tipos, testes e construção para produção); preservação da rede de regressão, teste novo obrigatório e cobertura não decrescente; fronteira de escrita verificada por código; revisão independente com evidência conferida & Contêiner efêmero por tarefa; ambiente temporário de visualização \\
+\hline
+UPA & Seis Zonas Dinâmicas autônomas, uma por tela; \textit{payload} declarativo; catálogo fechado de três componentes; validação em duas camadas; retorno ao componente nativo e registro de violação; encaminhamento de pedidos escritos à zona correspondente & Zonas conversacionais; barramento de eventos entre zonas; fluxos declarativos de múltiplas etapas; filtro dedicado de injeção de \textit{prompt} \\
+\hline
+\end{tabularx}
+\fonte{elaborado pelos autores (2026).}
+\end{quadro}
+
+Duas adaptações merecem registro. O isolamento da execução foi implementado por clone do repositório em diretório temporário e ramo exclusivo, e não por um contêiner efêmero por tarefa, o que preserva o efeito de isolamento do código, mas não o de isolamento de processo. Já a integração com o GitHub para abertura de \textit{pull requests} reais foi implementada e configurada, mas a validação aqui relatada usou o modo local, no qual o próprio PASE desempenha o papel do \textit{pull request}, com as mesmas exigências de validação e de aprovação humana por escrito.
+
+\subsection{Painel de Controle}\label{sec:5.2.3}
+
+O painel de controle concentra a supervisão humana e torna observável o funcionamento do motor. Nele estão as tarefas candidatas, ordenadas por prioridade, as tarefas em andamento, agrupadas por estado, o histórico das finalizadas e os descartes com seus motivos. As listas são atualizadas por eventos do próprio sistema, e não por consultas periódicas. As Figuras~\ref{fig:7} a~\ref{fig:10} apresentam quatro telas que evidenciam os princípios de rastreabilidade e de governança.
+
+\begin{figure}[htb]
+\centering
+\caption{Descartadas: propostas barradas pelo funil por duplicidade ou incoerência, com o motivo de cada descarte}
+\label{fig:7}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Tarefas > Descartadas]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\begin{figure}[htb]
+\centering
+\caption{Dependências: grafo das tarefas, com nós coloridos por estado e arestas de dependência}
+\label{fig:8}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Dependências]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\begin{figure}[htb]
+\centering
+\caption{Sistema: fila de execução, memória vetorial, consumo acumulado, travas e \textit{prompts} versionados}
+\label{fig:9}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Sistema]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\begin{figure}[htb]
+\centering
+\caption{Contexto: documentos do produto versionados no banco e as etapas do ciclo que leem cada um}
+\label{fig:10}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Contexto]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+A tela de Contexto materializa as bases de conhecimento da arquitetura. O contexto do FinTrack é composto por dezenove documentos, entre eles escopo e restrições, requisitos, funcionalidades, arquitetura, banco de dados, interface, guia de engenharia, guia de ramos e registros de decisões de arquitetura. Cada edição gera uma nova versão, e cada etapa do ciclo lê apenas os documentos de que precisa. Quando uma tarefa é aprovada, o sistema propõe uma atualização do contexto, que só é gravada se uma pessoa a aceitar.
+
+\section{Material e Métodos}\label{sec:5.3}
+
+A validação adota a estratégia de estudo de caso: a arquitetura é aplicada à evolução de um produto e seu comportamento é observado em execuções reais, com modelos de linguagem reais, e não simulados. O período de observação vai de 16 de setembro a 10 de outubro de 2026, do primeiro \textit{commit} da PoC à última execução registrada. A validação apoia-se em quatro fontes de evidência complementares.
+
+A primeira fonte são os registros das execuções reais, mantidos no banco do PASE e no histórico do repositório. Eles incluem cada proposta recebida, cada descarte com seu motivo, cada tarefa e suas transições de estado, cada execução com seu consumo e sua duração e cada evento do fluxo de entrega. A segunda fonte são oito roteiros de demonstração executáveis, cada um projetado para provar uma propriedade específica da arquitetura, apresentados no Quadro~\ref{quadro:4}. A terceira são as suítes de testes automatizados, que somam 533 testes: 433 no núcleo do PASE, 53 na interface de programação do FinTrack e 47 na sua interface de usuário. A quarta são três métricas definidas antes da construção da PoC, para avaliar o equilíbrio entre autonomia e supervisão.
+
+\begin{quadro}[htb]
+\centering
+\caption{Roteiros de demonstração e as propriedades que verificam}
+\label{quadro:4}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Roteiro} & \textbf{Propriedade verificada} & \textbf{Princípio} \\
+\hline
+D1 & Uma demanda em linguagem natural vira código integrado, passando por decisão humana & Autonomia supervisionada \\
+\hline
+D2 & Duplicatas e propostas incoerentes são barradas, com motivo e contagem & Rastreabilidade integral \\
+\hline
+D3 & A IA gera propostas próprias, nos modos exploratório e de análise de lacunas & Autonomia supervisionada \\
+\hline
+D4 & A personalização autônoma aparece para uma persona e não para a outra & Contenção da generatividade \\
+\hline
+D5 & \textit{Payloads} maliciosos não chegam à tela: retorno ao nativo e violação registrada & Contenção da generatividade \\
+\hline
+D6 & O teto de tentativas e o teto de custo interrompem a execução de fato & Contenção da generatividade \\
+\hline
+D7 & Tickets repetidos sobre a mesma dor viram uma demanda de Zona Dinâmica & Alinhamento entre arquitetura e tarefa \\
+\hline
+D8 & A auditoria propõe refatoração e a reavaliação reabre um descarte obsoleto & Rastreabilidade integral \\
+\hline
+\end{tabularx}
+\fonte{elaborado pelos autores (2026).}
+\end{quadro}
+
+As três métricas foram definidas da seguinte forma. A taxa de intervenção humana é a proporção de decisões de ajuste ou de recusa sobre o total de entregas que chegaram à homologação. A densidade de retrabalho é o número médio de execuções por tarefa finalizada. A incidência de regressões é o número de tarefas cujos testes falharam em uma execução depois de terem passado em uma execução anterior da mesma tarefa. As três são calculadas a partir de arquivos exportados pelo próprio sistema, e não de anotações manuais.
+
+\section{Fluxo 1: da Demanda ao Código em Produção}\label{sec:5.4}
+
+O primeiro fluxo acompanha uma funcionalidade real, o modo escuro do FinTrack, registrada como tarefa nº 6 do PASE, da demanda em linguagem natural até a publicação na versão 1.0.0 do produto. A escolha não é casual. O modo escuro foi a funcionalidade que mais exigiu da arquitetura, e as tentativas anteriores, discutidas na Seção~\ref{sec:5.7}, motivaram parte dos mecanismos descritos no Capítulo~\ref{cap:4}. A Figura~\ref{fig:11} mostra o produto antes da solicitação.
+
+\begin{figure}[htb]
+\centering
+\caption{FinTrack antes da solicitação: interface apenas em tema claro, sem controle de tema}
+\label{fig:11}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: FinTrack em /dashboard no commit 09dff0d]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+A demanda entra no painel em texto livre e atravessa o Motor de Filtragem: normalização, Memória Histórica, com busca vetorial contra itens implementados, em andamento e descartados, Coerência Sistêmica, frente aos documentos de contexto, e Qualificação, por impacto, complexidade, confiança e risco. O resultado é uma tarefa candidata priorizada, que aguarda a decisão do gestor (Figura~\ref{fig:12}).
+
+\begin{figure}[htb]
+\centering
+\caption{Painel do PASE recebendo a solicitação: demanda em linguagem natural e tarefa candidata qualificada, aguardando aprovação ou recusa}
+\label{fig:12}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Tarefas > Nova demanda e aba Candidatas]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+Aprovada a candidata, a cadeia segue de forma autônoma até o próximo ponto de decisão humana. Na Fase de Planejamento, o Executor mapeou sete arquivos a alterar e definiu cinco critérios de aceite antes de escrever qualquer código. Como a tarefa refazia uma tentativa anterior, o plano passou pelo ponto de decisão humana próprio e só foi liberado depois de aprovado (Figura~\ref{fig:13}). Na Fase de Execução, o Executor trabalhou em clone isolado e ramo exclusivo, e a entrega só chegou à pessoa depois de passar pela verificação automática: análise estática, tipos, testes, construção para produção, preservação dos testes existentes, teste novo para comportamento novo e cobertura não decrescente (Figura~\ref{fig:14}).
+
+\begin{figure}[htb]
+\centering
+\caption{Documento de Planejamento Técnico: arquivos previstos, critérios de aceite (C1 a C5) e trilho do ciclo de vida da tarefa}
+\label{fig:13}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: tarefa nº 6, aba Planejamento]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\begin{figure}[htb]
+\centering
+\caption{Execução registrada: diferenças de código, registro das verificações automáticas e transcrição integral da interação com o modelo}
+\label{fig:14}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: tarefa nº 6, aba Execuções]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+A entrega definiu a paleta escura, adicionou o botão de alternância e persistiu a preferência por persona, com um teste para cada um dos cinco critérios de aceite. Um agente revisor separado conferiu cada critério citando o código e o teste correspondentes, e o sistema verificou por código que as citações existem. Só então o gestor decidiu (Figura~\ref{fig:15}). A execução consumiu 113.131 \textit{tokens} e durou cerca de seis minutos, da liberação do plano à chegada na homologação.
+
+\begin{figure}[htb]
+\centering
+\caption{Homologação: parecer da revisão independente por critério de aceite e decisão do gestor (aprovar, ajustar ou recusar)}
+\label{fig:15}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: tarefa nº 6, aba Homologação]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+Aprovar não equivaleu a publicar. A tarefa foi integrada ao ramo de integração, onde a verificação contínua passou. Em seguida, foi aprovada funcionalmente, com uma nota registrada pela pessoa responsável, incluída na versão candidata 1.0.0 e validada com as suítes completas. Somente então foi publicada no ramo principal, mediante nova aprovação humana por escrito, e marcada com a versão 1.0.0 (Figura~\ref{fig:16}). O histórico do repositório preserva essa cadeia com autoria do agente, nos \textit{commits} 7c810b6, 0d6050a e 0ff8483, e a funcionalidade passou a valer no produto em execução (Figura~\ref{fig:17}).
+
+\begin{figure}[htb]
+\centering
+\caption{Tela Entrega: tarefa no ramo de integração, versão 1.0.0 validada e publicação no ramo principal sob aprovação humana}
+\label{fig:16}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Entrega, com a release 1.0.0]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\begin{figure}[htb]
+\centering
+\caption{FinTrack após a entrega: botão ``Usar tema escuro'' e paleta escura aplicada a todas as telas}
+\label{fig:17}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: FinTrack em /dashboard no estado atual, tema escuro, mesmo enquadramento da Figura 11]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+O Quadro~\ref{quadro:5} resume a sequência de eventos registrada pelo sistema para essa tarefa. Os intervalos entre os eventos que dependem de pessoas são maiores que os intervalos entre os eventos automáticos, o que é esperado em um regime de autonomia supervisionada: a máquina não espera, e a pessoa decide no seu próprio tempo.
+
+\begin{quadro}[htb]
+\centering
+\caption{Linha do tempo da tarefa nº 6, conforme os registros do sistema (8 de outubro de 2026)}
+\label{quadro:5}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Horário} & \textbf{Evento} & \textbf{Responsável} \\
+\hline
+17h34 & Tarefa criada como refação da tarefa nº 4, com o motivo da insatisfação anterior & Pessoa \\
+\hline
+17h37 & Plano pronto: sete arquivos e cinco critérios de aceite, aguardando aprovação & Agente \\
+\hline
+18h21 & Plano aprovado e execução iniciada & Pessoa \\
+\hline
+18h27 & Entrega verificada e revisada, pronta para homologação & Agente \\
+\hline
+18h37 & Entrega aprovada e integrada no ramo de integração & Pessoa \\
+\hline
+18h38 & Verificação contínua do ramo de integração aprovada & Sistema \\
+\hline
+19h06 & Aprovação funcional registrada & Pessoa \\
+\hline
+19h09 & Versão candidata 1.0.0 criada a partir do ramo principal e tarefa incluída & Pessoa \\
+\hline
+19h10 & Validação final da versão candidata aprovada & Sistema \\
+\hline
+19h13 & Versão 1.0.0 publicada no ramo principal, com marca de versão & Pessoa \\
+\hline
+\end{tabularx}
+\fonte{elaborado pelos autores (2026), a partir dos registros de transição de estado e de entrega do PASE.}
+\end{quadro}
+
+\section{Fluxo 2: Personalização em Tempo de Execução}\label{sec:5.5}
+
+O segundo fluxo valida o UPA. Sem tocar o repositório e sem decisão humana, ele personaliza as Zonas Dinâmicas do FinTrack, que são seis, uma por tela, preenchendo propriedades de um catálogo fechado de três componentes: uma lista de atalhos, um cartão de resumo e uma faixa de aviso. A telemetria de navegação aciona a regra da zona, o UPA gera um \textit{payload} declarativo e o servidor o valida contra o contrato antes de persisti-lo (Figura~\ref{fig:18}). O contrato é um único documento canônico, espelhado no cliente; um teste automatizado compara os dois, campo a campo, para impedir que divirjam.
+
+\begin{figure}[htb]
+\centering
+\caption{Simulador do painel: o uso intenso de relatórios pela persona Ana aciona a zona do painel inicial e o UPA gera um payload declarativo}
+\label{fig:18}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Zonas > Simulador e payload ativo com o JSON expandido]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+No cliente, uma segunda validação, a decisiva, confronta o \textit{payload} com o contrato rígido antes de exibi-lo. A personalização aparece apenas para quem a motivou (Figura~\ref{fig:19}). Cada zona observa uma rota e um número mínimo de visitas em uma janela de sete dias, e cada combinação de pessoa e zona respeita um intervalo de vinte e quatro horas entre avaliações, de modo que o custo da personalização não cresça com a frequência de navegação.
+
+\begin{figure}[htb]
+\centering
+\caption{Personalização em execução: Ana vê o componente gerado pelo UPA, com o selo ``personalizado'', enquanto Clara mantém o componente nativo}
+\label{fig:19}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: FinTrack em /dashboard como Ana e como Clara, lado a lado]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+A defesa foi testada no pior caso: \textit{payloads} maliciosos gravados diretamente no banco, contornando a validação do servidor. Os três casos foram um rótulo acima do limite de quarenta caracteres, um \textit{link} para endereço externo e um componente fora do catálogo, nomeado \texttt{iframe\_injector}. O cliente recusou os três, manteve o componente nativo e registrou cada violação com o motivo e o conteúdo bruto (Figura~\ref{fig:20}). Em nenhum momento a IA gera código executável.
+
+\begin{figure}[htb]
+\centering
+\caption{Defesa em profundidade: payload com link externo injetado sem validação do servidor, recusado pelo cliente e registrado como violação}
+\label{fig:20}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Captura: Zonas > Injetor e lista de Violações]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\section{Resultados Obtidos}\label{sec:5.6}
+
+No período de observação, a PoC registrou seis tarefas, dez execuções do Executor e oitenta e cinco chamadas a modelos de linguagem, que somaram cerca de 1,19 milhão de \textit{tokens}. O histórico do repositório registra vinte e três \textit{commits} com autoria do agente do PASE, entre implementações, integrações, reversões e a publicação da versão 1.0.0. A Tabela~\ref{tab:1} apresenta o desfecho de cada tarefa.
+
+\begin{table}[htb]
+\centering
+\caption{Tarefas executadas pela PoC e seus desfechos}
+\label{tab:1}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|X|X|X|X|X|}
+\hline
+\textbf{Tarefa} & \textbf{Demanda} & \textbf{Execuções} & \textbf{\textit{Tokens}} & \textbf{Desfecho} \\
+\hline
+1 & Editar a data de uma transação diretamente na lista & 1 & 53.457 & Aprovada e mantida \\
+\hline
+2 & Implementar modo escuro no sistema & 1 & 76.154 & Aprovada e revertida depois \\
+\hline
+3 & Implementar modo escuro no sistema & 4 & 114.408 & Interrompida pela trava de custo e cancelada \\
+\hline
+4 & Implementar modo escuro no FinTrack & 1 & 109.720 & Aprovada e revertida depois \\
+\hline
+5 & Exportar transações em formato CSV & 2 & 485.851 & Reprovada pela revisão independente e cancelada \\
+\hline
+6 & Implementar modo escuro no FinTrack (refação da nº 4) & 1 & 113.131 & Aprovada, publicada na versão 1.0.0 \\
+\hline
+\end{tabularx}
+\fonte{elaborado pelos autores (2026), a partir dos registros de execução do PASE.}
+\end{table}
+
+No funil de filtragem, as nove propostas recebidas no período tiveram desfechos explícitos. Quatro foram descartadas por incoerência com o contexto do produto, e cada motivo cita a linha do documento de escopo que a proposta violava: mineração de criptomoedas, editor de vídeo, rede social entre usuários e metas de gasto por categoria. As outras cinco tornaram-se tarefas. Em um ciclo anterior de demonstração, registrado em 19 de setembro de 2026, o funil havia produzido treze descartes, oito por incoerência e cinco por duplicidade, e o cliente havia recusado os três \textit{payloads} maliciosos descritos na Seção~\ref{sec:5.5}.
+
+A Tabela~\ref{tab:2} apresenta as três métricas de validação definidas na Seção~\ref{sec:5.3}, acrescidas de uma quarta, a taxa de aprovações revertidas, que se mostrou necessária para interpretar a primeira. As métricas exigem cuidado de leitura e são discutidas na seção seguinte.
+
+\begin{table}[htb]
+\centering
+\caption{Métricas de validação calculadas sobre as tarefas do período}
+\label{tab:2}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Métrica} & \textbf{Definição} & \textbf{Valor} \\
+\hline
+Taxa de intervenção humana & Ajustes ou recusas sobre entregas que chegaram à homologação & 0 de 4 (0\%) \\
+\hline
+Aprovações revertidas & Entregas aprovadas na homologação e revertidas depois, pela pessoa & 2 de 4 (50\%) \\
+\hline
+Densidade de retrabalho & Execuções por tarefa finalizada & 10 / 6 = 1,67 \\
+\hline
+Incidência de regressões & Tarefas com testes que falharam depois de terem passado na mesma tarefa & 0 \\
+\hline
+\end{tabularx}
+\fonte{elaborado pelos autores (2026).}
+\end{table}
+
+Dois resultados adicionais quantificam fenômenos relevantes para o desenho da arquitetura. O primeiro é a imprecisão da estimativa de custo feita pelo modelo no planejamento: para a tarefa nº 6, o plano estimou 7.800 \textit{tokens}, e a execução consumiu 113.131, cerca de quatorze vezes mais. O segundo é o consumo das execuções que não convergiram: a tarefa nº 5 consumiu 485.851 \textit{tokens} em duas execuções sem chegar a uma entrega aprovável, o maior consumo do período.
+
+\section{Discussão}\label{sec:5.7}
+
+Os dois fluxos demonstram que o núcleo da arquitetura funciona. Uma demanda em linguagem natural percorreu as três camadas e chegou à produção com decisão humana em cada ponto crítico, e a personalização em tempo de execução operou sem expor o núcleo do produto a código arbitrário. Mais do que demonstrar o caminho de sucesso, porém, a validação expôs falhas reais, e a forma como a arquitetura foi ajustada em resposta a elas é o resultado mais informativo deste trabalho.
+
+O caso do modo escuro ilustra o princípio da contenção da generatividade na prática. A funcionalidade exigiu quatro tentativas. A tarefa nº 2 passou na checagem de tipos e nos testes e foi aprovada, mas quebrou o aplicativo inteiro, porque introduziu estado em um componente que o compilador do \textit{framework} exige que seja estático. Nem a checagem de tipos nem os testes cobriam essa regra, e a construção completa para produção passou a integrar a verificação. A tarefa nº 4 passou em todas as verificações e também foi aprovada, mas não fazia nada visível: aplicava uma classe ao documento, testava que a classe estava lá e nunca definia uma cor escura. Os testes provavam o mecanismo, e ninguém conferia o efeito.
+
+Esse segundo episódio explica a métrica mais reveladora da Tabela~\ref{tab:2}. A taxa de intervenção humana na homologação foi nula, e ainda assim metade das entregas aprovadas foi revertida depois, quando a pessoa observou o produto em execução. A leitura correta não é que o gate humano seja desnecessário, mas que um gate humano diante de um \textit{diff} plausível e de verificações verdes é insuficiente. A resposta da arquitetura foi tornar explícito o que deve ser conferido, com os critérios de aceite definidos no planejamento, e quem confere antes da pessoa, com a revisão independente e a evidência verificada por código. Depois dessa mudança, a tarefa nº 5 foi barrada pela revisão antes de chegar à homologação, e a tarefa nº 6 foi aprovada e permaneceu em produção. A amostra é pequena, e o resultado não autoriza generalização, mas indica a direção correta do mecanismo.
+
+A tarefa nº 3 ilustra a trava de custo. Duas retomadas solicitadas pelo gestor foram interrompidas em segundos, sem consumir nenhum \textit{token}, porque o custo previsto da próxima chamada ultrapassava a folga do orçamento. A tarefa nº 5 mostra o outro lado do mesmo problema: sem um limite apropriado, ciclos de correção que não convergem consomem recursos rapidamente. Somada à subestimação de cerca de quatorze vezes na tarefa nº 6, essa evidência confirma que a estimativa do modelo serve como artefato de planejamento, mas não pode ser usada sozinha como teto de gasto.
+
+Todas essas lições têm a mesma forma, que o Quadro~\ref{quadro:6} resume. Em cada caso, uma garantia que inicialmente dependia de instrução ao modelo passou a ser verificada por código ou decidida por uma pessoa. Esse padrão é coerente com a literatura que aponta a combinação entre camadas determinísticas e geração probabilística como caminho para sistemas agênticos confiáveis \cite{abouali2025agentic}, e com a evidência de que sistemas multiagente acumulam erros quando não há verificação centralizada \cite{kim2026scaling}.
+
+\begin{quadro}[htb]
+\centering
+\caption{Ajustes motivados pela validação: do previsto ao construído}
+\label{quadro:6}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{|X|X|X|}
+\hline
+\textbf{Previsto inicialmente} & \textbf{Ajuste realizado} & \textbf{Falha que o motivou} \\
+\hline
+Confiar que o modelo preserva os testes existentes & Inventário de testes obtido do repositório original e conferido por código & Na primeira execução real, o Executor sobrescreveu um teste existente, e a verificação passou porque rodou a suíte adulterada \\
+\hline
+Verificações mecânicas bastam antes da pessoa & Critérios de aceite e revisão independente por outro modelo & O modo escuro passou em todas as verificações sem definir nenhuma cor \\
+\hline
+O revisor decide se a entrega cumpre o pedido & O revisor cita o trecho; o código confere se ele existe & Vereditos diretos de modelo sobre fatos verificáveis tendem a confabulação \\
+\hline
+Toda alteração colateral reprova a revisão & Só o que muda comportamento bloqueia; o cosmético vira aviso & Alterações de aspas e de comentários consumiram quatro rodadas de correção em uma tarefa que cumpria os cinco critérios \\
+\hline
+Checagem de tipos e testes bastam no frontend & Construção completa para produção na verificação & Uma entrega passou nas duas e quebrou o aplicativo inteiro \\
+\hline
+Orçamento conferido contra o gasto acumulado & Orçamento conferido contra o custo previsto da próxima chamada & A verificação retrospectiva deixava passar justamente a chamada que estourava o teto \\
+\hline
+A estimativa do planejamento serve de teto & A estimativa é artefato de planejamento, e o teto tem um piso & A estimativa errou por mais de uma ordem de grandeza \\
+\hline
+Aprovar na homologação leva à produção & Aprovar integra no ramo de integração; publicar é outra decisão & Separar ``a mudança está correta'' de ``o conjunto deve chegar aos usuários agora'' \\
+\hline
+Similaridade entre embeddings agrupa tickets sobre a mesma dor & Agrupamento de tickets feito por modelo, com o tema explícito & Tickets coloquiais sobre a mesma dor tiveram similaridade menor que pares de temas diferentes \\
+\hline
+\end{tabularx}
+\fonte{elaborado pelos autores (2026), a partir do registro de decisões da PoC.}
+\end{quadro}
+
+A validação também tem limites claros. O número de tarefas é pequeno, o produto-alvo é de porte reduzido e os operadores humanos foram os próprios autores, o que impede conclusões estatísticas sobre produtividade ou sobre a carga cognitiva da supervisão. Esses limites, e os que decorrem do escopo da revisão de literatura, são discutidos na Seção~\ref{sec:6.2}.
+
+\section{Considerações Finais}\label{sec:5.8}
+
+Este capítulo descreveu a implementação de uma prova de conceito da Arquitetura PASE e a validação de seus dois fluxos centrais. O fluxo de evolução de código levou uma demanda em linguagem natural até a publicação de uma versão do produto, com decisão humana em cada ponto crítico e rastro completo de cada decisão. O fluxo de personalização adaptou a interface por pessoa e recusou, no pior caso, conteúdos maliciosos que contornaram a primeira camada de validação.
+
+Os resultados mostram que a arquitetura funciona de ponta a ponta e, sobretudo, que suas garantias precisam ser verificadas por código para serem garantias. As falhas observadas durante a implementação não invalidam a proposta; ao contrário, cada uma delas foi absorvida pela arquitetura na forma de um mecanismo verificável, o que é precisamente o comportamento que se espera de um sistema projetado para operar com componentes probabilísticos.

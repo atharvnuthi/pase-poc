@@ -1,0 +1,140 @@
+name: pase-poc
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: pase
+      POSTGRES_PASSWORD: pase
+      POSTGRES_DB: pase
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pase -d pase"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pase-core:
+    build:
+      # contexto na raiz: o Dockerfile precisa de client-backend/requirements.txt
+      context: .
+      dockerfile: pase-core/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://pase:pase@db:5432/pase
+      REPO_PATH: /workspace/repo
+      # O bind mount do Docker Desktop no Windows/macOS não entrega os eventos
+      # de inotify do host para dentro do container: o `--reload` do uvicorn
+      # (que usa watchfiles) simplesmente nunca é avisado. Com polling ele
+      # pergunta em vez de esperar. Custa um pouco de CPU ociosa e é o preço de
+      # o arquivo salvo aparecer no navegador.
+      WATCHFILES_FORCE_POLLING: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      # monorepo inteiro: é o repositório que o Executor clona (SPEC-04 §6)
+      - .:/workspace/repo
+      # hot reload do próprio core
+      - ./pase-core:/app
+      # artefatos das runs (diff.patch, lint_test.log, transcript.jsonl)
+      - core-artifacts:/data
+    # `--timeout-graceful-shutdown` não é detalhe: o painel mantém um SSE aberto
+    # em /api/events/stream, e no reload o uvicorn espera as conexões fecharem
+    # antes de subir de novo - um stream, por definição, não fecha. Sem o teto,
+    # o primeiro salvamento deixava o core parado em "Waiting for connections to
+    # close" e a API inteira parava de responder.
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+      --reload --timeout-graceful-shutdown 5
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  client-backend:
+    build: ./client-backend
+    env_file: .env
+    environment:
+      WATCHFILES_FORCE_POLLING: "true"  # mesmo motivo do pase-core
+    ports:
+      - "8001:8001"
+    volumes:
+      # SQLite vive em /app/data/, montado junto para sobreviver a rebuilds
+      - ./client-backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8001/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  client-frontend:
+    build: ./client-frontend
+    env_file: .env
+    environment:
+      # dentro da rede do compose o browser continua acessando via localhost,
+      # por isso as URLs públicas apontam para as portas publicadas no host
+      NEXT_PUBLIC_CORE_URL: http://localhost:8000
+      NEXT_PUBLIC_CLIENT_API_URL: http://localhost:8001
+      # Equivalente do WATCHFILES_FORCE_POLLING para o watcher do Next (webpack
+      # usa o watchpack). É o contorno que a própria documentação do Next indica
+      # para Docker e WSL. O valor é o intervalo em ms; `node_modules` fica fora
+      # da varredura por padrão, então o custo é baixo.
+      WATCHPACK_POLLING: "1000"
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./client-frontend:/app
+      # volume anônimo: impede que o bind acima apague o node_modules da imagem
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      client-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3001/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 24
+      start_period: 40s
+
+  pase-panel:
+    build: ./pase-panel
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_CORE_URL: http://localhost:8000
+      NEXT_PUBLIC_CLIENT_API_URL: http://localhost:8001
+      WATCHPACK_POLLING: "1000"  # mesmo motivo do client-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./pase-panel:/app
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      pase-core:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 24
+      start_period: 40s
+
+volumes:
+  pgdata:
+  core-artifacts:

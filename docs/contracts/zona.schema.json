@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pase.local/contracts/zona.schema.json",
+  "title": "Contrato das Zonas Dinâmicas",
+  "description": "Fonte canônica do contrato (SPEC-05 §6). O core valida contra este arquivo e o cliente o espelha em Zod. Divergência entre os dois é bug. Este contrato descreve PROPRIEDADES de componentes nativos que já existem e já foram testados - nunca código a ser executado (SPEC-00 §6).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["widget", "label"],
+  "properties": {
+    "widget": {
+      "description": "Qual componente nativo do registry preencher. Nada fora desta lista é renderizável.",
+      "type": "string",
+      "enum": ["shortcut_list", "summary_card", "alert_banner"]
+    },
+    "label": {
+      "description": "Título exibido ao usuário.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "maxItems": {
+      "description": "Quantos itens exibir. Obrigatório para shortcut_list e summary_card.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "tone": {
+      "description": "Tom do aviso. Obrigatório para alert_banner.",
+      "type": "string",
+      "enum": ["neutral", "atencao"]
+    },
+    "items": {
+      "description": "Itens do widget. No máximo 3.",
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "href"],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "href": {
+            "description": "Somente rotas internas do FinTrack. A regex é o que impede link externo.",
+            "type": "string",
+            "pattern": "^/(dashboard|transacoes|relatorios|orcamentos|metas|suporte)$"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "widget": { "enum": ["shortcut_list", "summary_card"] } },
+        "required": ["widget"]
+      },
+      "then": { "required": ["maxItems", "items"] }
+    },
+    {
+      "if": {
+        "properties": { "widget": { "const": "alert_banner" } },
+        "required": ["widget"]
+      },
+      "then": { "required": ["tone"] }
+    }
+  ]
+}

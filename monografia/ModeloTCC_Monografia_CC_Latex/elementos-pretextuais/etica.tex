@@ -1,0 +1,16 @@
+% ----------------------------------------------------------
+% Declaração de Considerações Éticas
+% ----------------------------------------------------------
+\section*{Declaração de Considerações Éticas}
+\thispagestyle{empty}
+Esta pesquisa não envolveu experimentos com seres humanos nem a coleta de dados pessoais ou sensíveis. O produto-alvo usado na validação, o FinTrack, opera exclusivamente com duas personas fictícias e com dados financeiros sintéticos, gerados para fins de demonstração. A prova de conceito foi executada apenas em ambiente local, sem exposição pública e sem integração com dados bancários reais, o que afasta o tratamento de dados pessoais nos termos da Lei Geral de Proteção de Dados (Lei nº 13.709/2018).
+
+Os riscos considerados na concepção da arquitetura dizem respeito à segurança do software produzido e à responsabilidade pelas decisões tomadas por agentes de IA. Esses riscos foram mitigados por decisões de projeto descritas no texto: execução isolada do agente que escreve código, sem acesso de rede além do provedor do modelo; verificação automática obrigatória; aprovação humana registrada antes de qualquer integração e de qualquer publicação; recusa de conteúdo personalizado que viole contratos rígidos; e registro integral de cada decisão. As chaves de acesso aos provedores de modelos foram mantidas fora do repositório.
+
+\section*{Declaração de Uso de IA Generativa}
+Ferramentas de IA generativa foram utilizadas neste trabalho em duas condições distintas, declaradas a seguir.
+
+Como objeto de estudo, modelos de linguagem integram a própria prova de conceito descrita no Capítulo~\ref{cap:5}. São eles o \textit{gpt-4.1-mini}, nas etapas de filtragem de demandas; o \textit{gpt-5.3-codex}, na escrita de código; o \textit{gpt-5.5}, na revisão independente das entregas; e o \textit{text-embedding-3-small}, na busca semântica. Todos são acessados pela interface de programação da OpenAI, e suas saídas são registradas e auditáveis.
+
+Como ferramenta de apoio aos autores, foi utilizado o assistente Claude Code, da Anthropic, com modelos da família Claude [confirmar versões utilizadas]. Ele apoiou o desenvolvimento do código da prova de conceito, a organização e a revisão do texto, a verificação das citações contra os documentos de referência e a formatação do manuscrito. [Confirmar e completar com outras ferramentas eventualmente utilizadas, como corretores gramaticais ou tradutores.] Todo o conteúdo produzido com esse apoio foi revisado, verificado e assumido pelos autores, que são responsáveis pelas ideias, pelas decisões de projeto, pela análise e pelas conclusões apresentadas.
+\clearpage

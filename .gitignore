@@ -1,0 +1,36 @@
+# Ambiente
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Next
+node_modules
+.next/
+out/
+npm-debug.log*
+
+# Dados locais e artefatos do Executor
+client-backend/data/*.db
+pase-core/data/
+artifacts/
+
+# SO / editor
+.DS_Store
+Thumbs.db
+
+# Artefatos de build do TypeScript/Next
+*.tsbuildinfo
+next-env.d.ts
+
+# CSVs de métricas: gerados por `make metrics`, não versionados
+metrics/
+
+# cópias locais do PASE (backup do contexto etc.)
+.pase-local/

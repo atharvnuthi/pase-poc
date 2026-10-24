@@ -1,0 +1,20 @@
+# Lint dos dois backends Python (CLAUDE.md: rodar antes de todo commit).
+line-length = 100
+target-version = "py312"
+
+exclude = [".venv", "node_modules", ".next", "__pycache__"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "C4"]
+ignore = [
+    "B008", # Depends() no default de parâmetro é o idioma do FastAPI
+]
+
+[lint.per-file-ignores]
+"**/tests/*" = ["E501"]
+# Migrações são geradas pelo Alembic; reformatá-las à mão gera ruído de diff
+# e some na próxima geração.
+"**/alembic/versions/*" = ["E501"]
+
+[lint.isort]
+known-first-party = ["app", "tests"]

@@ -1,0 +1,9 @@
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+sqlmodel>=0.0.22,<0.1
+httpx>=0.27,<1.0
+
+# Rede de regressão do Executor (SPEC-02): precisa estar disponível também
+# dentro do container do pase-core.
+pytest>=8.3,<9.0
+ruff>=0.6,<1.0

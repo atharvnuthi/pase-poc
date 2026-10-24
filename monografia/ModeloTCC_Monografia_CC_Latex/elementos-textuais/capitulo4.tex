@@ -1,0 +1,231 @@
+% Gerado a partir de MONOGRAFIA_PASE.md. O texto foi transposto sem alterações.
+
+\chapter{Proposta: a Arquitetura PASE}\label{cap:4}
+
+\section{Introdução}\label{sec:4.1}
+
+O Capítulo~\ref{cap:2} mostrou que a transição para o software agêntico já produz ganhos concretos, mas ainda não dispõe de uma arquitetura que concilie a autonomia crescente dos sistemas de IA com a supervisão, o controle e o alinhamento humano. O Capítulo~\ref{cap:3} mostrou que os trabalhos mais próximos tratam partes desse problema de forma isolada. Este capítulo apresenta a resposta deste trabalho a essa lacuna: a Arquitetura PASE (\textit{Personalized Adaptive Software Ecosystem}).
+
+A Arquitetura PASE é uma arquitetura de software híbrida humano-IA, voltada a estruturar o ciclo de vida completo de uma funcionalidade, da originação da ideia à sua integração e personalização em produção, sob um regime de autonomia supervisionada. Ela não persegue a automação total, nem reduz a IA a um papel apenas assistivo. Sua premissa condutora é uma divisão explícita de responsabilidades: os agentes de IA propõem, decompõem, executam e verificam, enquanto pessoas governam as decisões críticas e respondem por elas.
+
+Cabe uma precisão conceitual. A PASE não é uma entidade inteligente que decide como se organiza. Ela é uma especificação arquitetural, definida pelos autores, que determina quais componentes existem, quais decisões cabem a modelos de linguagem, quais cabem a código determinístico e quais cabem a pessoas. As seções a seguir descrevem essa especificação no nível conceitual. Os detalhes de tecnologia, os parâmetros calibrados e as evidências de funcionamento são tratados no Capítulo~\ref{cap:5}.
+
+\section{Visão Geral e Princípios de Projeto}\label{sec:4.2}
+
+Quatro princípios de projeto sustentam a arquitetura e orientam todas as decisões descritas neste capítulo. Eles derivam diretamente dos requisitos consolidados na Seção~\ref{sec:2.6} e funcionam como critério de desempate: quando duas soluções técnicas são possíveis, prevalece a que melhor preserva os quatro princípios. Cada um deles é apresentado a seguir.
+
+O primeiro princípio é a \textbf{autonomia supervisionada} (\textit{human-in-the-loop}). O julgamento humano é preservado nos pontos de maior incerteza e impacto, e não distribuído de forma difusa ao longo do fluxo. A arquitetura define de antemão onde a pessoa decide: na aprovação de uma tarefa candidata, na aprovação do plano técnico quando o risco o exige, na homologação da entrega e na publicação em produção. Essa escolha segue o modelo de parceria humano-IA no qual a supervisão é indispensável para decisões sensíveis \cite{burte2025sdlc}.
+
+O segundo princípio é a \textbf{contenção da generatividade}. A imprevisibilidade dos modelos de linguagem é aproveitada onde agrega valor, como na geração de ideias e na escrita de código, e bloqueada onde ameaça a integridade do sistema. A arquitetura combina camadas determinísticas de verificação com geração probabilística, na linha da integração neuro-simbólica apontada como direção promissora para a IA agêntica \cite{abouali2025agentic}. Uma regra decorre desse princípio e atravessa todas as camadas: quando a decisão depende de um fato verificável, o modelo aponta a evidência e o código confere se ela existe.
+
+O terceiro princípio é a \textbf{rastreabilidade integral}. Cada decisão relevante, seja de um modelo, de uma regra ou de uma pessoa, gera um registro persistente que pode ser religado à demanda que a originou. A proveniência deixa de depender da memória da equipe e passa a ser uma propriedade do sistema. É esse registro que permite auditar, reverter e medir o comportamento da arquitetura ao longo do tempo.
+
+O quarto princípio é o \textbf{alinhamento entre arquitetura e tarefa}. A eficácia de um sistema multiagente depende menos do número de agentes do que da adequação entre a estrutura de coordenação e a natureza do problema \cite{kim2026scaling}. Por isso, a PASE especifica contratos de entrada e saída entre as camadas, e não a estratégia interna de geração de cada uma. Uma camada pode usar um único modelo, vários agentes especializados ou uma cadeia de etapas, desde que respeite seu contrato.
+
+Para operacionalizar esses princípios, a arquitetura organiza-se em três camadas sequenciais e complementares, apresentadas na Figura~\ref{fig:2}. A primeira é (i) a Camada de Tarefas (\textit{Task Layer}), ponto de entrada que capta demandas de fontes heterogêneas, filtra redundâncias e incoerências e qualifica o que resta em tarefas candidatas. A segunda é (ii) a Camada de Orquestração (\textit{Orchestration Layer}), plano de controle que prioriza, modela dependências, aplica os pontos de decisão humana e conduz cada tarefa até a entrega. A terceira é (iii) a Camada de Execução (\textit{Execution Layer}), nível operacional que converte as decisões aprovadas em código verificado e, por meio do \textit{User Personalization Agent} (UPA), entrega a personalização em tempo de execução sem expor o núcleo do sistema a código arbitrário.
+
+\begin{figure}[htb]
+\centering
+\caption{Visão geral da Arquitetura PASE}
+\label{fig:2}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Imagem: \texttt{model-image-1.png}, versão refinada]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+As três camadas compartilham três bases de conhecimento, representadas na parte superior da Figura~\ref{fig:2}. O contexto geral do projeto reúne os documentos que definem o produto, como escopo, restrições, requisitos e regras de negócio. O histórico de tarefas registra o que já foi implementado ou está em andamento. O histórico de descartes guarda as propostas recusadas e os motivos de cada recusa. Essas bases não são estáticas: uma tarefa aprovada atualiza o histórico de tarefas e pode propor uma revisão do contexto, e uma tarefa recusada alimenta o histórico de descartes. Assim, a arquitetura aprende com as próprias decisões sem que o sistema reescreva sozinho os critérios pelos quais é julgado, já que qualquer mudança no contexto exige aceite humano.
+
+\section[Camada de Tarefas (Task Layer)]{Camada de Tarefas (\textit{Task Layer})}\label{sec:4.3}
+
+A Camada de Tarefas transforma demandas brutas e dispersas em um \textit{backlog} estruturado, qualificado e alinhado ao produto. Nela se materializa um equilíbrio central da arquitetura: abertura máxima na originação de demandas e rigor máximo na sua seleção. A camada admite insumos desestruturados ou de alta abstração e, em seguida, submete cada proposta a uma filtragem progressiva, na qual redundâncias, incoerências e itens de baixo valor são descartados antes de alcançar as camadas seguintes.
+
+A camada organiza-se em quatro blocos encadeados, detalhados na Figura~\ref{fig:3}. Os dois primeiros preparam a demanda: (i) a Formação de Requisitos, que origina demandas a partir de usuários, equipe e IA, e (ii) o \textit{Middleware} de Normalização, que converte cada insumo em um objeto padronizado. Os dois seguintes decidem seu destino: (iii) o Avaliador de Zonas Dinâmicas, que decide se a demanda pede uma funcionalidade nativa ou uma área personalizável, e (iv) o Motor de Filtragem de Tarefas, que valida a proposta contra a memória, o contexto e o valor esperado. O produto final é um conjunto de tarefas candidatas, anotadas por impacto, complexidade e confiança, pronto para a Camada de Orquestração.
+
+\begin{figure}[htb]
+\centering
+\caption{Camada de Tarefas da Arquitetura PASE}
+\label{fig:3}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Imagem: metade esquerda de \texttt{model-image-2.png}, versão refinada]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\subsection{Formação de Requisitos}\label{sec:4.3.1}
+
+A eficácia do ecossistema depende da diversidade dos insumos que alimentam a filtragem. Ao contrário do Motor de Filtragem, que prioriza rigor e consistência, a Formação de Requisitos é otimizada para alcance. Ela opera por três fluxos de originação: o fluxo de agentes externos, o fluxo de agentes internos e o fluxo da própria inteligência artificial.
+
+O fluxo de agentes externos capta necessidades de quem usa o software. Na captação ativa, uma interface simples, disponível em todas as telas, permite que o usuário sugira melhorias em linguagem natural e receba de volta a decisão tomada sobre a sugestão. A arquitetura prevê uma estratégia de engajamento em que contribuições convertidas em funcionalidades são recompensadas, com uma avaliação inicial feita por um modelo de baixa latência para filtrar ruído antes do processamento mais custoso.
+
+Na captação passiva, a IA analisa tickets de suporte e outras interações não sensíveis do usuário para extrair intenções a partir de dores relatadas, convertendo reclamações informais em propostas estruturadas. A mineração de relatos de usuários e de registros de problemas como fonte de requisitos é apontada pela literatura como uma direção promissora, ainda pouco explorada \cite{hou2024llm4se,zhang2026survey}. Como reclamações sobre a mesma dor costumam ser escritas de formas muito diferentes, a captação passiva agrupa por tema os tickets que relatam o mesmo problema antes de convertê-los, de modo que três pessoas relatando a mesma dor gerem uma única demanda, com o peso de três ocorrências.
+
+O fluxo de agentes internos representa as inserções da equipe que conhece o software. As sugestões funcionais são demandas de novas funcionalidades, de natureza propositiva, e podem ser feitas por qualquer membro da equipe. Por isso, seguem o fluxo integral do Motor de Filtragem. As sugestões de engenharia, por sua vez, tratam de refatoração, débito técnico ou infraestrutura. Por serem decisões técnicas deliberadas, seguem da normalização diretamente para a qualificação, sem passar pelas camadas de memória e coerência. Esse desvio só é concedido a autores autorizados, pois a autorização já transfere o julgamento para uma pessoa qualificada.
+
+O fluxo da inteligência artificial posiciona a IA como agente proativo na evolução do produto, capaz de antecipar necessidades sem depender de estímulos externos. Para manter a relevância das propostas, esse fluxo usa como guias o contexto geral do projeto, o mapa de funcionalidades já implementadas e o histórico de descartes. Ele se divide em três modos.
+
+A geração exploratória usa o modelo configurado com alta variabilidade de amostragem para propor funcionalidades que ultrapassam o escopo imediato, tratando como recurso criativo aquilo que em outros contextos seria um defeito. A análise de lacunas atua de forma analítica, cruzando módulos já implementados em busca de integrações ainda não exploradas. Por exemplo, a coexistência de um módulo de orçamento e um módulo de metas sugere um aviso que relacione o gasto do mês ao ritmo necessário para cumprir uma meta. A prospecção competitiva, por fim, compara periodicamente o produto com funcionalidades lançadas por concorrentes, com o objetivo de identificar defasagens, e não de replicá-las. Para reduzir vieses de um único modelo, a arquitetura prevê ainda a alternância periódica dos modelos usados nesse fluxo.
+
+\subsection[Middleware de Normalização]{\textit{Middleware} de Normalização}\label{sec:4.3.2}
+
+O \textit{Middleware} de Normalização atua como tradutor universal entre fontes heterogêneas e o restante da camada. Um texto informal de cliente, um ticket de suporte ou uma sugestão técnica da equipe chegam em formatos e registros muito diferentes. A normalização extrai o núcleo semântico de cada proposta, remove ruídos de linguagem e a estrutura em um objeto padronizado, com título, descrição e módulo afetado. Etapas de preparação semelhantes, como a extração de informações-chave de relatos de defeitos, a estruturação de registros heterogêneos e a remoção de entradas duplicadas ou curtas demais, são recorrentes nos estudos que aplicam modelos de linguagem à engenharia de software \cite{hou2024llm4se,zhang2026survey}.
+
+Sem essa etapa, a comparação semântica das camadas seguintes seria comprometida pela variação na forma de escrita das fontes. Duas propostas idênticas em intenção, mas redigidas de modos distintos, poderiam escapar da detecção de duplicidade. A normalização garante que a memória da arquitetura compare ideias, e não estilos de escrita.
+
+\subsection{Avaliador de Zonas Dinâmicas}\label{sec:4.3.3}
+
+O Avaliador de Zonas Dinâmicas determina se uma demanda deve ser resolvida por uma funcionalidade nativa tradicional ou pela abertura de uma Zona Dinâmica, isto é, uma área do produto preparada para ser personalizada por usuário em tempo de execução. Para isso, o avaliador confronta a demanda com o histórico recente de pedidos sobre o mesmo módulo e decide entre duas linhas de solução.
+
+Na primeira linha, a funcionalidade global estática, a dor identificada possui um padrão de solução homogêneo e aplicável à maior parte da base de usuários. Nesse caso, a arquitetura gera uma tarefa convencional para o desenvolvimento de código nativo permanente. Na segunda linha, a abertura de Zona Dinâmica, o módulo afetado concentra pedidos frequentes, mas com soluções muito divergentes entre usuários, típicos de uma cauda longa de necessidades individuais. Nesse caso, o avaliador bloqueia a criação de uma funcionalidade estática e emite uma tarefa de parametrização, que transforma aquela área em um espaço personalizável, preservando seu comportamento padrão. A decisão de manter fixos os elementos estruturais da tela e abrir à adaptação apenas áreas delimitadas segue a recomendação de preservar âncoras visuais imutáveis durante mudanças de interface, para que o usuário não perca a orientação \cite{arora2025selfevolving}.
+
+A tarefa de parametrização delimita os limites de mutabilidade da área, define as regras de negócio e as restrições de segurança que valem ali e mantém o conteúdo agnóstico. Ela não descreve o que cada usuário verá, mas o que pode ou não ser personalizado. Quando a zona solicitada já existe, a demanda não gera nova tarefa de código: ela é encaminhada ao UPA, que ajusta a zona da pessoa que fez o pedido. Esse desvio evita que um pedido individual se torne uma mudança permanente para todos os usuários.
+
+\subsection{Motor de Filtragem de Tarefas}\label{sec:4.3.4}
+
+Todas as propostas que não são sugestões de engenharia autorizadas transitam pelo Motor de Filtragem de Tarefas. Ele atua como validador de segurança e viabilidade, e cada uma de suas camadas tem autonomia para descartar prematuramente propostas redundantes, incoerentes ou de baixo valor. O motor opera em três camadas sucessivas: (i) Memória Histórica, (ii) Coerência Sistêmica e (iii) Qualificação e Atribuição de Metadados.
+
+A Camada de Memória Histórica realiza a análise de similaridade e a deduplicação. Ela compara a proposta com funcionalidades já implementadas, com tarefas em andamento e com propostas previamente descartadas, por meio de busca semântica em uma base vetorial. O objetivo é impedir a redundância e evitar que o produto reintroduza ideias que já se mostraram inadequadas. Uma duplicata não gera novo registro na base: ela incrementa a contagem de ocorrências do item existente. Essa escolha mantém a base densa e livre de ruído semântico, e ao mesmo tempo preserva a frequência com que um pedido aparece, sinal que o Avaliador de Zonas Dinâmicas utiliza.
+
+A Camada de Coerência Sistêmica analisa se a proposta é compatível com o escopo e com as regras de negócio do produto, confrontando-a com os documentos do contexto geral do projeto. Ela tem autoridade de descarte imediato quando a incompatibilidade é irreversível, e o motivo do descarte cita o trecho do contexto violado. Quando a essência da proposta pode ser preservada com um recorte menor, a camada realiza um ajuste pontual. Nesse caso, a proposta ajustada é obrigatoriamente revalidada contra a Memória Histórica, porque o ajuste pode tê-la transformado em duplicata de algo existente. Se a compatibilização exigir alteração estrutural da ideia original, o motor opta pelo descarte, evitando um \textit{backlog} preenchido por sugestões descaracterizadas.
+
+A Camada de Qualificação e Atribuição de Metadados não descarta propostas. Ela as rotula com três variáveis que orientam a priorização. O impacto estimado expressa o valor potencial para o usuário ou para o negócio, e a complexidade esperada estima a magnitude relativa do esforço \cite{burte2025sdlc}. O índice de confiança indica o grau de certeza do modelo sobre as duas estimativas anteriores. A camada atribui ainda uma faixa de risco à tarefa. Propostas com baixa confiança, ou com a combinação de baixo impacto e alta complexidade, recebem um marcador de incerteza, que sinaliza ao gestor humano a necessidade de análise mais criteriosa na Camada de Orquestração. O marcador aplica a tendência de concentrar a atenção humana no que mais importa, em vez de distribuí-la igualmente por todas as decisões \cite{anthropic2026trends}.
+
+As propostas descartadas em qualquer camada são armazenadas na base vetorial de descartes com um resumo dos motivos determinantes. A arquitetura privilegia a densidade de informação: em vez de guardar o texto bruto, preserva o contexto crítico da rejeição. Por meio de geração aumentada por recuperação (\textit{Retrieval-Augmented Generation}, RAG), técnica que ancora a resposta do modelo em informações recuperadas e verificadas para reduzir alucinações \cite{abouali2025agentic}, apenas os descartes mais relevantes para a proposta em análise são levados ao modelo. Isso evita sobrecarga de contexto e transforma o histórico de descartes em uma base de conhecimento leve e consultável.
+
+\subsection{Módulo de Reavaliação Cíclica}\label{sec:4.3.5}
+
+Decisões de descarte não são permanentes, mas contextuais. Uma proposta recusada porque contrariava o escopo de ontem pode ser legítima diante do escopo de hoje. O Módulo de Reavaliação Cíclica é o processo em segundo plano que trata dessa deriva de contexto. Periodicamente, ou por acionamento humano, ele relê as propostas descartadas por incoerência e verifica se a restrição que justificou cada descarte ainda consta do contexto geral do projeto.
+
+A verificação aplica o princípio da contenção da generatividade. Pedir a um modelo um veredito direto sobre se uma restrição ainda existe abre espaço para confabulação. Por isso, o modelo apenas aponta o trecho do contexto atual que sustentaria a manutenção do descarte, e a decisão cabe ao código, que confere se esse trecho existe literalmente no documento. Quando a restrição deixou de existir, a proposta é reintroduzida na filtragem com nova relevância. Assim, a arquitetura evita uma forma de estagnação por amnésia, em que boas ideias permaneceriam enterradas apenas porque foram rejeitadas em outro momento do produto.
+
+\section[Camada de Orquestração (Orchestration Layer)]{Camada de Orquestração (\textit{Orchestration Layer})}\label{sec:4.4}
+
+A Camada de Orquestração é o plano de controle da arquitetura e se posiciona entre a Camada de Tarefas e a Camada de Execução. Ela é ativada de forma reativa, pela chegada de novas tarefas candidatas ou pela ocorrência de incidentes em produção, e acompanha cada demanda desde a priorização até a publicação. Nela se concentra a supervisão humana estrutural: o motor produz recomendações de priorização, sequenciamento e integração, mas a decisão sobre o que entra em execução, o que é aceito e o que chega à produção permanece com pessoas.
+
+Para coordenar múltiplas tarefas sem conflito, a camada modela as interdependências entre elas em um grafo acíclico direcionado (\textit{Directed Acyclic Graph}, DAG). A esse fluxo somam-se seis mecanismos de governança operacional, apresentados nesta seção. São eles (i) a priorização com decisão humana, (ii) o planejamento e o despacho guiados pelo grafo, (iii) o tratamento de falhas e a trava de custo, (iv) a homologação e a entrega em estágios, (v) o ciclo de vida por estados e (vi) o ciclo de auditoria recorrente. A Figura~\ref{fig:4} detalha esses componentes e os da Camada de Execução.
+
+\begin{figure}[htb]
+\centering
+\caption{Camadas de Orquestração e de Execução da Arquitetura PASE}
+\label{fig:4}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Imagem: metade direita de \texttt{model-image-2.png}, versão refinada]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+\subsection{Priorização e Decisão Humana}\label{sec:4.4.1}
+
+A priorização das tarefas candidatas usa os três metadados da qualificação, complementados por um fator de urgência. Esse fator é uma variável dinâmica calculada a partir de eventos externos, como incidentes ativos em produção, criticidade de segurança, prazos de acordos de nível de serviço ou metas de negócio. A recomendação favorece as tarefas que combinam maior impacto, maior urgência e menor complexidade.
+
+A priorização é uma recomendação, e não uma ordem. O gestor humano pode alterar a sequência conforme a estratégia do projeto, usando o marcador de incerteza como alerta para as tarefas que pedem análise mais criteriosa. Manter essa decisão sob controle humano é coerente com a evidência de que a transformação organizacional com IA depende de redesenhar processos em torno do julgamento humano, e não de removê-lo \cite{wef2026organizational}. Aprovar uma tarefa candidata, recusá-la com justificativa ou editá-la são as três decisões disponíveis nesse ponto.
+
+\subsection{Planejamento, Dependências e Despacho}\label{sec:4.4.2}
+
+Após a aprovação de uma tarefa, a Orquestração solicita à Camada de Execução um Documento de Planejamento Técnico. Esse documento informa os arquivos que serão afetados, o roteiro de implementação, os critérios de aceite que a entrega deverá cumprir e as estimativas de custo e de tempo. Para tarefas de risco médio ou alto, ou quando o gestor assim escolhe, o plano passa por um ponto de decisão humana próprio antes de qualquer escrita de código. O plano é o momento mais barato para discordar: nele, a pessoa pode aprovar, devolver com orientações ou editar o roteiro, sem que nenhum recurso de execução tenha sido gasto.
+
+Com o plano aprovado, a tarefa torna-se um novo nó do DAG de dependências, que mapeia a interdependência entre todas as tarefas aprovadas e ainda não concluídas. As dependências são representadas pelas arestas do grafo e podem ter três origens: a sobreposição de arquivos previstos nos planos, a proximidade semântica entre as tarefas e a indicação manual do gestor. Tarefas totalmente independentes são despachadas em paralelo. Quando há dependência, a decisão entre executar em paralelo ou aguardar os predecessores segue um limiar configurado pelo administrador, calculado a partir dos pesos acumulados das arestas. O grafo recusa, já na criação, qualquer aresta que formaria um ciclo.
+
+Após a conclusão de uma tarefa, os planos das tarefas que dependem dela podem precisar de atualização. A arquitetura prevê que essa atualização seja automatizada a partir de um segundo limiar sobre os pesos de dependência. Para requisitos de alta complexidade, prevê também a decomposição do nó principal em subgrafos menores, de modo que falhas em subtarefas sejam isoladas e replanejadas sem interromper o fluxo geral \cite{kim2026scaling}.
+
+\subsection{Tratamento de Falhas e Trava de Custo}\label{sec:4.4.3}
+
+Se a Camada de Execução falhar, seja por erro de sintaxe, testes reprovados ou violação de alguma restrição, o motor aplica uma política automática de reexecução com número máximo de tentativas. Atingido esse limite sem sucesso, a tarefa é suspensa, junto com o ramo do grafo que depende dela, e o problema é reportado a uma pessoa. A partir da suspensão, o gestor pode retomar a tarefa, com ou sem orientações adicionais, replanejá-la do zero ou cancelá-la.
+
+Acoplada à reexecução, a trava de custo (\textit{budget guardrail}) protege o projeto contra ciclos de erro que consomem recursos sem convergir \cite{spark2026cio}. A verificação é preditiva: antes de cada nova chamada ao modelo, o motor compara o custo previsto dessa chamada, estimado a partir das chamadas anteriores da mesma tarefa, com a folga restante do orçamento. Uma verificação apenas retrospectiva, que só reagisse depois de o teto ser ultrapassado, deixaria passar justamente a chamada que o estoura. O orçamento parte da estimativa do planejamento, acrescida de uma margem de tolerância, e pode ser ajustado pelo gestor.
+
+\subsection{Homologação e Entrega}\label{sec:4.4.4}
+
+Ao fim da execução, a Camada de Execução devolve à Orquestração um pacote com as alterações de código, os registros das verificações automáticas, o parecer da revisão independente e a telemetria de custo e tempo. A pessoa responsável revisa esse pacote e toma uma de três decisões. A primeira é (i) a recusa permanente, com justificativa, que envia a tarefa e o motivo ao histórico de descartes para que o erro não se repita. A segunda é (ii) a solicitação de ajuste, em que a pessoa aponta as modificações desejadas e a tarefa retorna à Execução para um novo ciclo. A terceira é (iii) a aprovação. Uma tarefa finalizada pode ainda ser refeita mais tarde, o que gera uma nova tarefa ligada à anterior e que carrega o plano, o parecer e o motivo da insatisfação.
+
+Aprovar uma entrega não equivale a publicá-la. A aprovação integra a tarefa em um ramo de integração, onde ela é verificada junto com as demais tarefas aprovadas e pode ser testada funcionalmente. Somente tarefas aprovadas nesse ambiente entram em uma versão candidata, que passa por uma validação final completa. A publicação em produção é uma segunda decisão humana, registrada por escrito, que incorpora a versão ao ramo principal e a identifica com uma marca de versão. Essa separação distingue duas perguntas que costumam ser confundidas: ``esta mudança está correta?'' e ``este conjunto de mudanças deve chegar aos usuários agora?''.
+
+A aprovação também atualiza as bases de conhecimento. O item entregue passa a constar do histórico de tarefas, e a arquitetura propõe, a partir da entrega, uma atualização do contexto geral do projeto, que só é gravada se uma pessoa a aceitar. Uma reversão desfaz as três coisas juntas: o código, o registro de item implementado e a memória da proposta que o originou. Sem essa simetria, pedir novamente algo que foi revertido seria barrado como duplicata de algo que não existe mais.
+
+\subsection{Ciclo de Vida da Tarefa}\label{sec:4.4.5}
+
+O fluxo de controle descrito garante a consistência do ciclo de vida de cada tarefa, representado na Figura~\ref{fig:5}. Uma tarefa transita pelos estados Candidata, Em Planejamento, Aguardando Aprovação do Plano (quando exigida), Pronta para Despacho, Em Execução, Suspensa, Em Homologação e Finalizada. O estado Finalizada registra o desfecho, seja aprovação, recusa, cancelamento ou reversão. Depois da aprovação, a tarefa percorre ainda os estágios de entrega: integração, versão candidata e produção.
+
+\begin{figure}[htb]
+\centering
+\caption{Ciclo de vida de uma tarefa na Arquitetura PASE}
+\label{fig:5}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Imagem: diagrama de estados a ser gerado, ver prompt de refinamento]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+Toda transição gera um registro com origem, destino, momento e motivo. Os pontos de decisão humana são sempre estados persistidos, e não processos travados à espera de resposta. Isso permite que uma tarefa aguarde uma decisão por minutos ou por dias sem consumir recursos, e que qualquer pessoa da equipe veja, a qualquer momento, quem ou o que a tarefa está esperando.
+
+\subsection{Ciclo de Auditoria e Saneamento Recorrente}\label{sec:4.4.6}
+
+Modelos de linguagem têm natureza probabilística. Ao realizarem sucessivas alterações granulares no repositório, podem provocar uma despadronização arquitetural gradual \cite{kravchuk2025modular} ou introduzir vulnerabilidades sutis, difíceis de perceber em revisões isoladas \cite{hou2024llm4se}. Por isso, a Orquestração incorpora um Ciclo de Auditoria e Saneamento Recorrente, que opera em conjunto com a Camada de Execução para a manutenção proativa da base de código.
+
+Periodicamente, ou por acionamento humano, o motor instrui a Execução a analisar o código do produto em busca de oportunidades de refatoração e de falhas de segurança. Cada achado gera uma nova sugestão de engenharia, marcada como originada da auditoria, que segue o mesmo fluxo das demais tarefas e passa pelos mesmos pontos de decisão humana. Desse modo, o ecossistema corrige os desvios produzidos por sua própria operação sem conceder a si mesmo um caminho privilegiado até a produção.
+
+\section[Camada de Execução (Execution Layer)]{Camada de Execução (\textit{Execution Layer})}\label{sec:4.5}
+
+A Camada de Execução é o nível operacional da arquitetura, o plano em que as decisões aprovadas se convertem em software efetivamente integrado ao produto. Ela abrange dois planos complementares. O primeiro é o Executor de Tarefas, que recebe as diretrizes da Orquestração e as transforma em alterações de código verificadas. O segundo é o plano de personalização em tempo de execução, conduzido pelo UPA sobre as Zonas Dinâmicas.
+
+Os dois planos compartilham o mesmo princípio de confinar a generatividade da IA a fronteiras explícitas e verificáveis, mas operam em regimes distintos. O Executor atua sobre o código-fonte permanente, sob controle da Orquestração e com latência de minutos. O UPA atua de forma autônoma sobre áreas previamente parametrizadas, em tempo de execução, com latência de segundos e sem alterar o repositório.
+
+\subsection{Executor de Tarefas: Fase de Planejamento Técnico}\label{sec:4.5.1}
+
+O Executor segue o princípio do isolamento. Ele não tem visibilidade sobre a priorização do \textit{backlog} nem sobre as demais tarefas: recebe uma instrução de entrada, resolve o problema técnico e devolve resultados padronizados. A arquitetura fixa contratos de entrada e saída e restrições de ambiente, mas é agnóstica quanto à estratégia interna de geração \cite{anthropic2026trends}. O trabalho do Executor divide-se em duas fases separadas, a de planejamento técnico e a de execução, para que nenhuma linha de código seja escrita antes de haver um plano aprovado.
+
+Na Fase de Planejamento Técnico, o Executor analisa o estado atual do repositório e produz o Documento de Planejamento Técnico. Esse documento contém quatro elementos. O primeiro é (i) o mapeamento de impacto, que identifica os arquivos e módulos a modificar, criar ou excluir, informação que a Orquestração usa para montar o grafo de dependências. O segundo é (ii) o roteiro de implementação, que descreve a estratégia técnica da alteração e serve de guia para a fase seguinte. O terceiro são (iii) os critérios de aceite, escritos do ponto de vista de quem usa o produto, que se tornam a régua de avaliação da entrega. O quarto são (iv) as estimativas de consumo de \textit{tokens} e de tempo. Localizar corretamente onde uma mudança precisa ocorrer é, por si, uma das partes mais difíceis da resolução de problemas reais de software por modelos de linguagem \cite{jimenez2024swebench}, o que justifica tratar o mapeamento de impacto como artefato próprio e revisável.
+
+Os critérios de aceite merecem destaque. Eles descrevem o efeito que o usuário deve observar, e não o mecanismo que o produz. Um critério como ``ao clicar em usar tema escuro, as cores de fundo e de texto de todas as telas mudam'' não é cumprido por uma entrega que apenas aplica uma classe a um elemento sem definir as cores correspondentes. Essa distinção é o que permite, mais adiante, avaliar se a entrega faz o que foi pedido, e não apenas se ela compila e passa nos testes.
+
+\subsection{Executor de Tarefas: Fase de Execução e Verificação}\label{sec:4.5.2}
+
+Após a aprovação do plano, o Executor inicia a escrita de código usando o roteiro de implementação como insumo principal, o que dispensa uma nova varredura completa do repositório e reduz tempo e consumo. Todo o processo ocorre em um ambiente isolado (\textit{sandbox}), que clona o repositório e trabalha em um ramo exclusivo da tarefa \cite{chhabra2026security}. O ambiente não tem acesso de rede além do provedor do modelo de linguagem. A arquitetura não impõe uma lista rígida de arquivos permitidos: o Executor pode ajustar arquivos correlacionados caso surja uma necessidade imprevista, mas todo arquivo alterado fora do plano é registrado como desvio e destacado na homologação. Há, porém, fronteiras que não se negociam. Os componentes que implementam as garantias de segurança da própria arquitetura, como o código que valida as Zonas Dinâmicas, são inalcançáveis pelo Executor, e essa fronteira é verificada por código antes de qualquer escrita.
+
+Dentro do ambiente isolado, o código gerado passa por um ciclo local de verificação e correção antes de interagir com qualquer parte externa. A verificação inclui análise estática, checagem de tipos, execução das suítes de teste e construção completa do produto para produção. Problemas detectados são corrigidos no próprio ambiente, sem onerar a Orquestração, até um limite de tentativas. Correções puramente mecânicas, como formatação e ordem de importações, são aplicadas por ferramentas determinísticas, e não pelo modelo.
+
+A validação baseia-se no princípio da testabilidade autônoma, com três exigências verificadas por código \cite{burte2025sdlc}. A primeira é a preservação da rede de regressão: o inventário de testes existentes é obtido do repositório original, e não do ambiente de trabalho, e qualquer teste removido ou enfraquecido reprova a entrega. A segunda é que comportamento novo exige teste novo. A terceira é que a cobertura dos arquivos alterados não pode diminuir, o que impede que um teste trivial satisfaça formalmente a segunda exigência sem exercitar o código. Essas exigências são conferidas por código porque a simples instrução ao modelo não basta para garanti-las.
+
+\subsection{Revisão Independente e Retorno de Dados}\label{sec:4.5.3}
+
+Verificações mecânicas aprovadas não provam que a tarefa funciona. Uma entrega pode compilar, passar em todos os testes e, ainda assim, não fazer o que foi pedido, porque os testes conferem o mecanismo e não o efeito. Por isso, antes de chegar à pessoa, toda entrega passa por uma revisão independente, conduzida por um agente revisor distinto do que escreveu o código. O revisor avalia cada critério de aceite do ponto de vista do usuário e, para marcá-lo como atendido, deve citar o trecho do código que o cumpre e o trecho do teste que falharia se o critério não fosse cumprido.
+
+As citações do revisor são conferidas por código: um trecho que não existe literalmente no arquivo anula o critério, ainda que o raciocínio esteja correto. O revisor também classifica cada alteração não solicitada pela tarefa. Alterações que mudam comportamento bloqueiam a entrega; alterações apenas cosméticas viram avisos para quem homologa, sem consumir novas rodadas de correção. Quando um critério depende de algo que o ambiente de teste não consegue verificar, como a cor efetivamente calculada pelo navegador, o revisor descreve o passo exato que a pessoa deve executar na tela para conferi-lo.
+
+Encerradas as verificações, o Executor organiza os resultados em um pacote padronizado, enviado à Orquestração. O pacote contém o estado da operação, as alterações em formato de diferenças (\textit{diff}), os registros das verificações e o parecer da revisão com as evidências conferidas. Contém também os arquivos alterados fora do plano, o histórico completo da interação com o modelo e a telemetria de consumo de \textit{tokens} e de tempo. Com esse pacote, a pessoa que homologa vê não apenas o resultado, mas também como ele foi produzido, e pode assumir o controle da tarefa a qualquer momento. A arquitetura prevê ainda um ambiente temporário de visualização, no qual a entrega pode ser testada funcionalmente antes da decisão.
+
+\subsection[User Personalization Agent e Zonas Dinâmicas]{\textit{User Personalization Agent} e Zonas Dinâmicas}\label{sec:4.5.4}
+
+Uma vez que uma tarefa de abertura de Zona Dinâmica é aprovada e implementada, a arquitetura delega a gestão dessa área a uma camada de tempo de execução controlada pelo \textit{User Personalization Agent} (UPA). O UPA opera de forma autônoma e isolada do fluxo de requisitos globais. Ele observa a telemetria de interação de cada usuário e, ao identificar um padrão relevante em um módulo que possui Zona Dinâmica homologada, gera para aquele usuário uma configuração declarativa (\textit{payload}) que personaliza a zona. O agente atua apenas sobre áreas já preparadas para isso e nunca sobre o restante da interface.
+
+Os padrões que podem disparar essa avaliação incluem o uso intenso de uma área, cliques repetitivos que sugerem frustração, tempo excessivo para concluir tarefas e taxas elevadas de erro de validação. O uso de sinais de interação, como sequência de cliques, tempo gasto em tarefas e abandono de caminhos de navegação, é recorrente em sistemas adaptativos \cite{tan2025alp,bieniek2024generative}. A mesma literatura adverte, porém, que um sinal isolado é ambíguo e que a adaptação deve se apoiar em várias características do comportamento \cite{tan2025alp}. Por isso, na PASE, a telemetria apenas aciona a avaliação, e a decisão de personalizar cabe ao agente, que pode concluir que não há nada a fazer.
+
+Os sinais observados, a decisão do agente e o \textit{payload} gerado são registrados, de modo que cada personalização pode ser auditada e revogada. Esse registro é o equivalente, no plano da personalização, da rastreabilidade que a Orquestração garante no plano do código.
+
+O ponto central é o que o UPA não faz. Ele não gera código executável. O \textit{payload} é um objeto de propriedades que preenche componentes do próprio produto, já existentes, revisados e testados, escolhidos de um catálogo fechado. \citeonline{arora2025selfevolving} descrevem uma arquitetura com dois caminhos: um rápido, que recupera componentes de interface pré-validados, e um lento, que gera código novo quando nenhum componente existente atende à necessidade. A PASE adota deliberadamente apenas o primeiro caminho em tempo de execução e transfere o segundo para o fluxo governado da Camada de Execução, com planejamento, verificação e homologação. Dessa forma, o ecossistema alcança o que este trabalho denomina hiper-personalização, a adaptação individual e contínua da interface em tempo real, sem que a IA produza código arbitrário enquanto o produto está em uso. Para controlar o custo, cada combinação de usuário e zona tem um intervalo mínimo entre avaliações, de modo que o gasto com o modelo não cresça com a frequência de navegação.
+
+As Zonas Dinâmicas admitem duas naturezas de acionamento. As Zonas Dinâmicas Autônomas são controladas de forma implícita pelo UPA, a partir da análise contínua de telemetria, e atuam apenas quando há uma necessidade identificada. As Zonas Dinâmicas Sob Demanda seguem uma abordagem baseada em intenção direta, na qual o usuário atua como coautor da interface ao expressar o que deseja em linguagem natural, de forma análoga à síntese dirigida descrita por \citeonline{arora2025selfevolving}, em que novas funcionalidades da interface são geradas a partir de comandos explícitos do usuário. Na PASE, essa intenção explícita continua limitada ao catálogo e ao contrato da zona.
+
+\subsection{Governança das Zonas Dinâmicas}\label{sec:4.5.5}
+
+Para conter entradas inválidas, a arquitetura separa restrições abstratas (\textit{Soft Constraints}) de contratos rígidos (\textit{Hard Constraints}). O UPA atua no nível das restrições abstratas, usando o contexto do produto para decidir, de forma flexível, o que faz sentido mostrar a cada pessoa. A validação definitiva, contudo, é executada de forma determinística pelo código da própria zona, contra um contrato declarado. Se o \textit{payload} violar o contrato, por usar um componente fora do catálogo, um parâmetro inválido ou um texto acima do limite, a zona aborta a renderização personalizada, exibe o componente nativo padrão e registra a violação.
+
+A Figura~\ref{fig:6} ilustra esse mecanismo com uma zona que exibe um aviso cujo contrato aceita apenas textos curtos e ligações para rotas internas do produto. Se o UPA, ou um comando do usuário, submeter um texto de quinhentos caracteres ou um endereço externo, a zona intercepta a inconformidade antes da renderização, descarta o conteúdo e mantém a visualização nativa. A validação ocorre em duas camadas, no servidor antes de persistir o \textit{payload} e no cliente antes de exibi-lo, e a decisiva é a do cliente, porque é ela que decide o que chega à tela.
+
+\begin{figure}[htb]
+\centering
+\caption{Contrato rígido de uma Zona Dinâmica: payload válido e payload recusado}
+\label{fig:6}
+\fbox{\parbox[c][4cm][c]{0.85\textwidth}{\centering\small [Imagem: diagrama do exemplo do banner, ver prompt de refinamento]}}
+\fonte{elaborado pelos autores (2026).}
+\end{figure}
+
+A abrangência das zonas pode ir além de componentes visuais isolados. Uma tarefa pode delimitar um processo de múltiplas etapas como ponto de extensão. Nesse caso, o \textit{payload} não descreve apenas uma tela, mas uma máquina de estados com regras de navegação, validações de campos e condições de transição. Em vez de código de programação, como \textit{JavaScript}, utiliza-se uma configuração estruturada, como JSON, o que preserva a flexibilidade do fluxo e protege a aplicação contra ataques de injeção de \textit{scripts} (\textit{Cross-Site Scripting}, XSS).
+
+As zonas operam ainda sob isolamento de escopo e menor privilégio. O acesso a dados é mediado por um kit de desenvolvimento estritamente tipado, que impede escrita arbitrária e acesso indevido à base de dados do produto. Nas zonas sob demanda, os \textit{prompts} enviados pelo usuário passam por uma etapa de validação prévia, que intercepta intenções maliciosas e tentativas de injeção de \textit{prompt} antes do processamento pelo agente \cite{chhabra2026security}.
+
+\subsection{Interoperabilidade entre Zonas}\label{sec:4.5.6}
+
+Para viabilizar soluções mais complexas, a arquitetura prevê a comunicação entre diferentes Zonas Dinâmicas e o código estático por meio de um barramento local de eventos (\textit{Event Bus}) no cliente da aplicação. Quando um componente dinâmico muda de estado, como um filtro personalizado, ele publica uma notificação no barramento. Outras zonas ou elementos nativos inscritos interceptam o evento e atualizam seu comportamento de forma sincronizada.
+
+Na prática, essa estrutura permite que a interação do usuário com um filtro gerado em uma zona atualize uma tabela nativa e estática que escuta o barramento. A personalização deixa de ser um adorno isolado e passa a compor o comportamento da tela, sem que o contrato de nenhuma das partes seja violado.
+
+\section{Considerações Finais}\label{sec:4.6}
+
+Este capítulo apresentou a Arquitetura PASE em três camadas. A Camada de Tarefas disciplina a originação e a filtragem de demandas, convertendo insumos heterogêneos em um \textit{backlog} qualificado e lembrando o que já foi feito e o que já foi recusado. A Camada de Orquestração concentra a supervisão humana em pontos definidos e coordena a execução por meio de um grafo de dependências, de travas de custo, de uma entrega em estágios e de um ciclo de auditoria. A Camada de Execução produz código em ambientes isolados, verificado por máquina e revisado por um agente independente, e confina a personalização a zonas com contratos verificáveis.
+
+Cada requisito da Seção~\ref{sec:2.6} encontra resposta nesses mecanismos. O plano de controle da Orquestração, com custo observável e registro de cada transição, responde ao R1. A cobertura do ciclo desde a originação da demanda, os critérios de aceite e a revisão independente respondem ao R2. As Zonas Dinâmicas, com contrato rígido, selo de personalização e retorno ao padrão nativo, respondem ao R3. O isolamento da execução, a fronteira de escrita e os pontos de decisão humana sobre plano, entrega e publicação respondem ao R4. O pacote de homologação, com evidências conferidas e histórico completo da interação com o modelo, responde ao R5, ao dar a quem decide o contexto necessário para julgar.
+
+O traço comum a todas as camadas é que a confiabilidade não é delegada ao comportamento do modelo. Onde uma garantia importa, ela é verificada por código ou decidida por uma pessoa. O Capítulo~\ref{cap:5} descreve a implementação de uma prova de conceito dessa arquitetura e as evidências obtidas ao aplicá-la à evolução de um produto real.

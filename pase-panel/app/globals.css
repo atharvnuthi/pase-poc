@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Paleta do painel.
+ *
+ * Papel e tinta no claro, grafite no escuro. Uma única cor de sinal - o laranja
+ * - e ela é reservada para "isto precisa de você". Se tudo chama atenção, nada
+ * chama; o painel existe para que a pessoa ache em segundos onde a decisão dela
+ * está sendo esperada.
+ *
+ * Os valores são canais RGB sem `rgb()`, para o Tailwind compor opacidade
+ * (`bg-ok/10`) a partir do mesmo token.
+ */
+:root {
+  --bg: 247 246 242;
+  --surface: 255 255 255;
+  --sunken: 241 239 233;
+  --line: 226 223 214;
+  --line-strong: 200 196 184;
+  --ink: 23 22 19;
+  --ink-2: 77 74 66;
+  --ink-3: 128 123 112;
+
+  --signal: 214 81 18;
+  --ok: 31 122 74;
+  --warn: 166 104 6;
+  --bad: 191 38 38;
+  --info: 37 89 189;
+  --zone: 109 74 210;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: 15 15 13;
+    --surface: 23 23 20;
+    --sunken: 10 10 9;
+    --line: 44 43 38;
+    --line-strong: 72 70 63;
+    --ink: 236 234 227;
+    --ink-2: 181 177 166;
+    --ink-3: 128 124 113;
+
+    --signal: 245 122 56;
+    --ok: 86 196 134;
+    --warn: 232 176 74;
+    --bad: 240 104 96;
+    --info: 120 164 245;
+    --zone: 164 138 250;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: 15 15 13;
+  --surface: 23 23 20;
+  --sunken: 10 10 9;
+  --line: 44 43 38;
+  --line-strong: 72 70 63;
+  --ink: 236 234 227;
+  --ink-2: 181 177 166;
+  --ink-3: 128 124 113;
+
+  --signal: 245 122 56;
+  --ok: 86 196 134;
+  --warn: 232 176 74;
+  --bad: 240 104 96;
+  --info: 120 164 245;
+  --zone: 164 138 250;
+
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-bg font-sans text-[14px] leading-[1.55] text-ink;
+    font-feature-settings: "ss02";
+  }
+
+  ::selection {
+    background: rgb(var(--signal) / 0.22);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ink));
+    outline-offset: 2px;
+  }
+
+  code,
+  kbd,
+  pre {
+    @apply font-mono;
+  }
+}
+
+@layer utilities {
+  /* Números que se alinham em coluna: contadores, tokens, durações. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Rótulo de seção: pequeno, mono, espaçado - o "sobretítulo" do painel. */
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3;
+  }
+}
