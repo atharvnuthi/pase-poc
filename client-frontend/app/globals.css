@@ -92,6 +92,36 @@
   --danger-on-inverse: 255 150 128;
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: 19 23 28;
+  --surface: 28 34 40;
+  --surface-sunken: 15 19 24;
+
+  --line: 58 69 80;
+  --line-strong: 86 100 114;
+
+  --ink: 236 232 220;
+  --ink-muted: 191 184 169;
+  --ink-subtle: 152 146 132;
+
+  --brand: 69 175 136;
+  --brand-strong: 52 146 111;
+  --brand-ink: 173 236 208;
+
+  --danger: 243 122 109;
+  --danger-soft: 72 34 31;
+
+  --warning: 232 178 85;
+  --warning-soft: 67 53 22;
+
+  --inverse: 236 232 220;
+  --on-inverse: 28 34 40;
+  --on-ink: 19 23 28;
+  --danger-on-inverse: 182 38 26;
+}
+
 @layer base {
   html {
     text-rendering: optimizeLegibility;
