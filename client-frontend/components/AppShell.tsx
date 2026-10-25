@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Botao, Marca } from "@/components/ui";
-import { clearPersona, usePersona } from "@/lib/user";
 import { trackPageView } from "@/lib/telemetry";
+import { applyTheme, readThemePreference, saveThemePreference, type Theme } from "@/lib/theme";
+import { clearPersona, usePersona } from "@/lib/user";
 import SuggestModal from "./SuggestModal";
 
 const LINKS = [
@@ -30,10 +31,19 @@ export default function AppShell({
   const { persona, loading } = usePersona();
   const pathname = usePathname();
   const router = useRouter();
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     if (persona) trackPageView(persona.id, pathname);
   }, [persona, pathname]);
+
+  useEffect(() => {
+    if (!persona) return;
+
+    const savedTheme = readThemePreference(persona.id);
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+  }, [persona]);
 
   if (loading || !persona) {
     return (
@@ -44,6 +54,15 @@ export default function AppShell({
   }
 
   const iniciais = persona.name.trim().charAt(0).toUpperCase();
+
+  function toggleTheme() {
+    if (!persona) return;
+
+    const nextTheme: Theme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    applyTheme(nextTheme);
+    saveThemePreference(persona.id, nextTheme);
+  }
 
   return (
     <div className="min-h-screen">
@@ -81,6 +100,9 @@ export default function AppShell({
               </span>
               <span className="text-sm font-medium">{persona.name}</span>
             </span>
+            <Botao variante="neutro" tamanho="sm" onClick={toggleTheme}>
+              {theme === "light" ? "Usar tema escuro" : "Usar tema claro"}
+            </Botao>
             <Botao
               variante="neutro"
               tamanho="sm"
