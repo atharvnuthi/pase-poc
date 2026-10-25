@@ -10,9 +10,8 @@ import { api, formatMoney, type Transaction } from "@/lib/api";
 /**
  * Totais por mês.
  *
- * A agregação acontece aqui, no cliente, a partir de GET /transactions: a API do
- * client-backend é contrato congelado (SPEC-02) e não ganha endpoints que o SPEC
- * não pediu. Com ~50 transações o custo é irrelevante.
+ * A agregação acontece aqui, no cliente, a partir de GET /transactions, sem
+ * endpoint novo no client-backend. Com ~50 transações o custo é irrelevante.
  */
 
 interface LinhaMes {

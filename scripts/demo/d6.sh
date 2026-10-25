@@ -1,53 +1,35 @@
 #!/usr/bin/env bash
-# D6 - Contenção da generatividade (SPEC-04 §10).
+# D6 - Captação Passiva → Zona Dinâmica (SPEC-03 §8.7).
 #
-# Os dois guardrails do SPEC-00 §4 são código que impede a ação, não prompt
-# pedindo cautela ao modelo. Aqui eles são forçados a atuar.
+# A origem de demanda que ninguém digitou: o sistema lê reclamações de suporte e
+# percebe que três pessoas querem coisas diferentes no mesmo lugar.
 source "$(dirname "$0")/_comum.sh"
 
-titulo "D6 · o que acontece quando o Executor falha ou gasta demais"
+titulo "D6 · da reclamação de suporte à decisão de personalizar"
 
-criar() {
-  post "$CORE/api/proposals/internal" "{\"type\":\"funcional\",\"author\":\"Atharv\",\"text\":\"$1\"}" \
-    | python -c "import sys,json;print(json.load(sys.stdin).get('task_id') or '')"
-}
-
-passo "1. Teto de tentativas: duas falhas seguidas"
-espera "falha → retry → falha → suspensa com alerta 'retries'"
-A=$(criar   "Demo de falha controlada: acrescentar um campo de observacao na transacao"   "Permitir anexar uma nota livre a cada transacao"   "Exibir a data de criacao de cada transacao na listagem")
-[ -n "$A" ] || fim "D6"
-nota "task #$A criada"
-patch_ "$CORE/api/tasks/$A/demo" '{"force_fail_runs":2}' > /dev/null
-post "$CORE/api/tasks/$A/approve" '{}' > /dev/null
-ESTADO=$(esperar_estado "$A" "suspensa|em_homologacao|finalizada" 900)
-DET=$(get "$CORE/api/tasks/$A")
-ALERTA=$(printf '%s' "$DET" | python -c "import sys,json;print(json.load(sys.stdin)['task']['alert'])")
-obteve "$ESTADO / alerta=$ALERTA"
-checar "suspensa para decisão humana" "$ESTADO" "suspensa"
-checar "alerta de tentativas" "$ALERTA" "retries"
-printf '%s' "$DET" | python -c "
+passo "1. Os tickets que o FinTrack recebeu"
+get "$CLIENT/tickets" | python -c "
 import sys,json
-for r in json.load(sys.stdin)['runs']:
-    print(f\"    tentativa {r['attempt']} [{r['trigger']}]: {r['status']} - {r['failure_reason']}\")"
-nota "o sistema não insiste para sempre: ele para e devolve a decisão a uma pessoa"
+for t in json.load(sys.stdin):
+    print(f\"    #{t['id']}: {t['text'][:110]}\")"
+nota "os três primeiros esbarram no mesmo limite - mas cada um quer uma saída diferente"
 
-passo "2. Teto de custo: budget de 100 tokens"
-espera "interrompida_budget, sem nenhuma chamada ao modelo"
-B=$(criar   "Permitir marcar uma transacao como favorita"   "Permitir arquivar uma transacao antiga sem excluir"   "Mostrar um contador de transacoes no rodape da listagem")
-[ -n "$B" ] || fim "D6"
-nota "task #$B criada"
-patch_ "$CORE/api/tasks/$B/demo" '{"budget_cap_tokens":100}' > /dev/null
-post "$CORE/api/tasks/$B/approve" '{}' > /dev/null
-ESTADO=$(esperar_estado "$B" "suspensa|em_homologacao|finalizada" 900)
-DET=$(get "$CORE/api/tasks/$B")
-ALERTA=$(printf '%s' "$DET" | python -c "import sys,json;print(json.load(sys.stdin)['task']['alert'])")
-obteve "$ESTADO / alerta=$ALERTA"
-checar "suspensa" "$ESTADO" "suspensa"
-checar "alerta de budget" "$ALERTA" "budget"
-printf '%s' "$DET" | python -c "
-import sys,json
-for r in json.load(sys.stdin)['runs']:
-    print(f\"    run: {r['status']}, {r['tokens_real']} tokens gastos - {r['failure_reason']}\")"
-nota "a verificação é preditiva: cortou ANTES de enviar a chamada que não cabia"
+passo "2. O job de captação passiva lê os tickets"
+espera "os tickets do mesmo tema são agrupados e viram UMA proposta"
+espera "o P1b enxerga cauda longa e marca output_type=zona_dinamica"
+SAIDA=$($COMPOSE exec -T pase-core python -m app.jobs.passive_capture 2>&1 | grep -v '^INFO')
+printf '%s\n' "$SAIDA" | sed 's/^/    /'
+
+contem "agrupou por tema" "$SAIDA" "tema:"
+if printf '%s' "$SAIDA" | grep -q "zona_dinamica"; then
+  ok "ao menos uma proposta virou zona dinâmica"
+else
+  falha "nenhuma proposta recebeu output_type=zona_dinamica"
+fi
+
+passo "3. A tarefa resultante"
+$COMPOSE exec -T db psql -U pase -d pase -c \
+  "SELECT id, left(title,52) AS titulo, module, output_type, status FROM tasks WHERE output_type='zona_dinamica' ORDER BY id DESC LIMIT 3;" 2>/dev/null
+nota "demanda homogênea vira código fixo; demanda divergente vira área configurável"
 
 fim "D6"

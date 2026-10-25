@@ -3,8 +3,9 @@
 Garantias estruturais que este módulo implementa:
 
 - **Isolamento** (SPEC-00 §7): todo trabalho acontece num clone em `/tmp`, numa
-  branch `pase/task-{id}`. Nada entra na branch principal aqui - só a
-  Homologação faz merge, e só com aprovação humana explícita.
+  branch `feature/pase-{id}-{slug}`. Nada entra na branch principal aqui: a
+  Homologação integra na `develop`, e só uma release, com aprovação humana
+  explícita, chega à principal.
 - **Verificação antes do humano** (SPEC-00 §5): lint e testes rodam sobre o
   código gerado. O humano revisa o que já passou pela máquina.
 - **Contenção** (SPEC-00 §4): teto de tokens verificado antes de cada chamada e
@@ -129,7 +130,7 @@ AMBIENTE_FECHADO = {
 
 
 class FalhaControladaError(RuntimeError):
-    """Falha injetada pelo modo demo (`demo_force_fail_runs`), para o D6(a)."""
+    """Falha injetada pelo modo demo (`demo_force_fail_runs`), para o D5(a)."""
 
 
 @dataclass
@@ -294,8 +295,8 @@ def inventario_de_testes(workspace_path: Path) -> set[str]:
     """Nomes de todos os testes dos alvos neste momento, lidos do disco.
 
     Cobre Python (`def test_*`) e TypeScript (`it(...)` / `test(...)`, em
-    `.test.tsx` e `.test.ts`): a rede de regressão do frontend entrou no SPEC-11
-    e precisa da mesma proteção que a do backend.
+    `.test.tsx` e `.test.ts`): a rede de regressão do frontend precisa da mesma
+    proteção que a do backend.
     """
     nomes: set[str] = set()
     for alvo, caminho, texto in _textos_de_teste_no_disco(workspace_path):
@@ -767,7 +768,7 @@ def _resumir_build(saida: str) -> str:
 def _gate_do_backend(raiz: Path) -> tuple[bool, str]:
     partes = []
 
-    # Corrigível pelo formatador é corrigido pelo formatador (ver CLAUDE.md).
+    # Corrigível pelo formatador é corrigido pelo formatador (ver README.md).
     codigo_fix, saida_fix = _rodar(["ruff", "check", "--fix", "."], raiz)
     partes.append(f"$ ruff check --fix .\n{saida_fix}\n(exit {codigo_fix})")
 

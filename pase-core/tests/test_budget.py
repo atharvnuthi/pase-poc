@@ -33,7 +33,7 @@ def test_estimativa_irrealista_cai_no_piso():
 
 
 def test_cap_de_demo_sobrepoe_a_estimativa_e_o_piso():
-    """É o instrumento do D6(b): forçar a interrupção por budget."""
+    """É o instrumento do D5(b): forçar a interrupção por budget."""
     assert teto_de(_task(demo_budget_cap_tokens=100), 999_999) == 100
 
 
@@ -58,7 +58,7 @@ def test_verificacao_e_preditiva_ja_na_primeira_chamada():
     """Teto de 100 com nada gasto: a chamada que não cabe é barrada de saída.
 
     Olhar só para o passado (`gasto >= teto`) deixaria passar exatamente a
-    primeira chamada - e é ela que o D6(b) precisa ver interrompida.
+    primeira chamada - e é ela que o D5(b) precisa ver interrompida.
     """
     guard = BudgetGuard(teto=100, ja_gasto=0)
 

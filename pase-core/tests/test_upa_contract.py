@@ -34,7 +34,7 @@ def test_payload_valido_passa():
 
 
 def test_label_longo_demais_e_recusado():
-    """O D5 usa exatamente este caso: label com 500 caracteres."""
+    """O D4 usa exatamente este caso: label com 500 caracteres."""
     payload = {**VALIDO_ALERTA, "label": "x" * 500}
 
     erros = contracts.erros_de(SLOT, payload)

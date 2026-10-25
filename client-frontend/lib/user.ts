@@ -1,5 +1,5 @@
 /**
- * Persona ativa. Não há autenticação nesta PoC (ver CLAUDE.md): o usuário é
+ * Persona ativa. Não há autenticação nesta PoC (ver README.md): o usuário é
  * escolhido na tela inicial e guardado no localStorage.
  */
 

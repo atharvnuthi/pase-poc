@@ -2,12 +2,13 @@
  * A garantia do SPEC-00 §6, agora verificada a cada execução (SPEC-11 §5).
  *
  * Até aqui, "uma Zona Dinâmica nunca executa código arbitrário" era demonstrado
- * à mão pelo D5. Como o Executor passou a escrever no frontend, a garantia
+ * à mão pelo D4. Como o Executor passou a escrever no frontend, a garantia
  * precisa ser um teste: é ela que protege o usuário de um payload malicioso, e
  * ninguém deve poder enfraquecê-la sem a suíte ficar vermelha.
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -125,6 +126,23 @@ describe("<DynamicZone>", () => {
 
     expect(await screen.findByText("resumo nativo de gastos")).toBeInTheDocument();
     await waitFor(() => expect(violacoes).toHaveLength(1));
+  });
+
+  it("no modo estrito, uma recusa vira um único registro", async () => {
+    const violacoes = servirPayload({ widget: "iframe_injector", label: "Conteúdo externo" });
+
+    render(
+      <StrictMode>
+        <DynamicZone slot="resumo_financeiro" userId={2}>
+          <Nativo />
+        </DynamicZone>
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText("resumo nativo de gastos")).toBeInTheDocument();
+    await waitFor(() => expect(violacoes).toHaveLength(1));
+    await new Promise((resolver) => setTimeout(resolver, 50));
+    expect(violacoes).toHaveLength(1);
   });
 
   it.each([

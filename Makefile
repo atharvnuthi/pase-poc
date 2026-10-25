@@ -1,11 +1,11 @@
-# Makefile do PASE PoC - ver SPEC-01 §5.
+# Makefile do PASE PoC.
 # Requer Docker Desktop (ou engine + plugin compose v2) e um shell POSIX
 # (no Windows, o sh do Git Bash já serve).
 
 COMPOSE := docker compose
 
 .PHONY: up down logs seed reset test-core test-client lint ps metrics demos migrate migration \
-        demo-d1 demo-d2 demo-d3 demo-d4 demo-d5 demo-d6 demo-d7 demo-d8
+        demo-d1 demo-d2 demo-d3 demo-d4 demo-d5 demo-d6 demo-d7
 
 ## up - sobe db + 4 serviços de aplicação e espera todos ficarem healthy
 up:
@@ -26,7 +26,7 @@ ps:
 
 ## seed - popula o FinTrack e o baseline do PASE
 ## Cada seed chama `init_db` antes de gravar, então o schema está garantido
-## mesmo que o `up --wait` tenha liberado o healthcheck antes do create_all.
+## mesmo que o `up --wait` tenha liberado o healthcheck antes de o esquema ser criado.
 seed:
 	$(COMPOSE) exec -T client-backend python -m app.seed
 	$(COMPOSE) exec -T pase-core python -m app.seed
@@ -39,17 +39,17 @@ metrics:
 	curl -s -o metrics/violations.csv http://localhost:8000/api/metrics/violations.csv
 	@wc -l metrics/*.csv
 
-## demos - roda os oito roteiros em sequência
-demos: demo-d1 demo-d2 demo-d3 demo-d4 demo-d5 demo-d6 demo-d7 demo-d8
+## demos - roda os sete roteiros em sequência
+demos: demo-d1 demo-d2 demo-d3 demo-d4 demo-d5 demo-d6 demo-d7
 
 ## reset - recria tudo do zero de forma idempotente
 ## Apaga também as branches do Executor: o banco zera e os ids das tarefas
-## recomeçam do 1, então uma branch `pase/task-1` antiga seria herdada pela
+## recomeçam do 1, então uma branch `feature/pase-1-...` antiga seria herdada pela
 ## tarefa #1 nova, já com código dentro.
 reset:
 	-$(COMPOSE) exec -T pase-core python -m app.jobs.context_backup export
 	$(COMPOSE) down -v
-	-git branch --list "*/pase-*" "pase/task-*" | xargs -r git branch -D
+	-git branch --list "*/pase-*" | xargs -r git branch -D
 	$(MAKE) up
 	$(MAKE) seed
 	$(COMPOSE) exec -T pase-core python -m app.jobs.context_backup import
@@ -58,7 +58,7 @@ reset:
 reset-all:
 	rm -f .pase-local/context-backup.json
 	$(COMPOSE) down -v
-	-git branch --list "*/pase-*" "pase/task-*" | xargs -r git branch -D
+	-git branch --list "*/pase-*" | xargs -r git branch -D
 	$(MAKE) up
 	$(MAKE) seed
 
@@ -81,7 +81,7 @@ test-core:
 test-client:
 	$(COMPOSE) exec -T client-backend pytest -q
 
-## lint - ruff nos dois backends (rodar antes de todo commit, ver CLAUDE.md)
+## lint - ruff nos dois backends (rodar antes de todo commit, ver README.md)
 ## Roda a partir da raiz do monorepo para que o ruff.toml do projeto valha.
 lint:
 	$(COMPOSE) exec -T pase-core sh -c "cd /workspace/repo && ruff check pase-core client-backend"
@@ -100,5 +100,3 @@ demo-d6:
 	bash scripts/demo/d6.sh
 demo-d7:
 	bash scripts/demo/d7.sh
-demo-d8:
-	bash scripts/demo/d8.sh

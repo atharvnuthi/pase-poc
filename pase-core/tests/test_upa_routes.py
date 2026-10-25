@@ -51,7 +51,7 @@ def test_slot_desconhecido_responde_404(client):
 
 @requires_db
 def test_simulate_gera_payload_e_isola_por_usuario(client, session, mock_providers):
-    """D4: a Ana recebe o widget; a Clara continua no nativo."""
+    """D3: a Ana recebe o widget; a Clara continua no nativo."""
     mock_providers.responses = [json.dumps({"personalize": True, "payload": PAYLOAD_VALIDO})]
 
     resposta = client.post("/api/upa/simulate", json={"user_id": ANA, "scenario": "ana_relatorios"})
@@ -82,7 +82,7 @@ def test_revogar_devolve_o_usuario_ao_nativo(client, session, mock_providers):
 
 @requires_db
 def test_inject_raw_grava_sem_validar_e_avisa_o_que_o_core_recusaria(client, session):
-    """D5: contornar a própria validação é o ponto - o cliente ainda recusa."""
+    """D4: contornar a própria validação é o ponto - o cliente ainda recusa."""
     invalido = {"widget": "iframe_injector", "label": "malicioso"}
 
     resposta = client.post(

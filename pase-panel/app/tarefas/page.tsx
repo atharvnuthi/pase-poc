@@ -621,7 +621,7 @@ function Finalizadas({ tarefas }: { tarefas: TaskRow[] }) {
       void agir(
         `reverter-${task.id}`,
         () => pase.revert(task.id, motivo),
-        `Tarefa #${task.id} revertida. O código saiu da branch principal.`,
+        `Tarefa #${task.id} revertida. O merge foi desfeito com um commit de revert.`,
       );
     }
   }

@@ -1,6 +1,6 @@
-"""Os 9 endpoints do FinTrack (SPEC-02 §1).
+"""Endpoints do FinTrack (SPEC-02 §1).
 
-ATENÇÃO: esta superfície é contrato congelado a partir da F1. O Executor do PASE
+ATENÇÃO: esta superfície é contrato congelado desde a primeira versão. O Executor do PASE
 edita este arquivo de forma autônoma e usa `tests/test_api.py` como rede de
 regressão - acrescentar ou mudar um endpoint aqui muda o que o Executor pode
 quebrar sem ninguém perceber. Ver SPEC-02 §Papel.
@@ -13,7 +13,6 @@ from collections import defaultdict
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.db import get_session
@@ -36,15 +35,6 @@ from app.months import parse_month
 router = APIRouter()
 
 ZERO = Decimal("0.00")
-
-
-# Armazenamento em memória para preferências de tema por user_id
-_theme_preferences: dict[int, str] = {}
-
-
-class ThemePreference(BaseModel):
-    user_id: int
-    theme: str  # 'light' ou 'dark'
 
 
 def _field_error(field: str, message: str) -> HTTPException:
@@ -289,21 +279,3 @@ def export_transactions_csv(
     }
 
     return Response(content=csv_content, media_type="text/csv", headers=headers)
-
-
-# Novos endpoints para preferência de tema
-
-@router.get("/theme", response_model=ThemePreference)
-def get_theme_preference(user_id: int = Query(...)) -> ThemePreference:
-    """Retorna a preferência de tema do usuário, ou 'light' se não definida."""
-    theme = _theme_preferences.get(user_id, "light")
-    return ThemePreference(user_id=user_id, theme=theme)
-
-
-@router.post("/theme", response_model=ThemePreference)
-def set_theme_preference(payload: ThemePreference) -> ThemePreference:
-    """Define a preferência de tema do usuário."""
-    if payload.theme not in ("light", "dark"):
-        raise _field_error("theme", "tema deve ser 'light' ou 'dark'")
-    _theme_preferences[payload.user_id] = payload.theme
-    return payload

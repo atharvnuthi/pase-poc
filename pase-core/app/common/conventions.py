@@ -31,7 +31,7 @@ NOME_DE_BRANCH = re.compile(
     rf"^(?:{'|'.join(BRANCHES_DE_TRABALHO)})/[A-Za-z0-9][A-Za-z0-9._/-]*$|^release/\d+\.\d+\.\d+$",
 )
 
-#: Marca a branch como território do Executor - nunca editada à mão (CLAUDE.md).
+#: Marca a branch como território do Executor - nunca editada à mão (README.md).
 PREFIXO_DO_EXECUTOR = "pase-"
 
 TAMANHO_DO_SLUG = 40

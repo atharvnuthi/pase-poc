@@ -98,7 +98,7 @@ IMPLEMENTADAS = [
 ]
 
 # SPEC-06 §6.3 - descartes históricos, com motivos escritos como o P2a escreveria.
-# O quarto é deliberadamente reversível: o D8 edita os documentos de contexto para
+# O quarto é deliberadamente reversível: o D7 edita os documentos de contexto para
 # remover a restrição citada e a Reavaliação Cíclica deve reintroduzir a proposta.
 DESCARTES = [
     (
@@ -127,11 +127,12 @@ DESCARTES = [
         "Além disso, a regra central diz que toda transação pertence a exatamente um "
         "usuário, o que é incompatível com exposição pública de dados financeiros.",
     ),
-    # Este quarto descarte é deliberadamente reversível (SPEC-06 §6.3): o D8 remove
+    # Este quarto descarte é deliberadamente reversível (SPEC-06 §6.3): o D7 remove
     # do contexto a linha que ele cita, e a Reavaliação Cíclica deve
     # reintroduzir a proposta. O tema é gamificação: orçamentos e metas entraram no escopo
-    # (eram o tema deste descarte) e exportar CSV é o que o critério 4 do SPEC-03 e o D1
-    # do SPEC-04 pedem que passe pelo funil, então nenhum dos dois pode ser a restrição.
+    # (eram o tema deste descarte) e exportar CSV é o que o critério 4 do SPEC-03 e o
+    # roteiro de evolução de código do SPEC-04 pedem que passe pelo funil, então nenhum
+    # dos dois pode ser a restrição.
     (
         "Medalhas e conquistas por economizar",
         "Dar medalhas e conquistas ao usuário quando ele cumprir metas e economizar, "

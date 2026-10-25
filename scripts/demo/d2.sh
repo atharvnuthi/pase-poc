@@ -1,34 +1,33 @@
 #!/usr/bin/env bash
-# D2 - Memória Histórica (SPEC-03 §8.1-8.3).
+# D2 - Geração por IA (SPEC-03 §8.9).
 #
-# Prova que o sistema não trabalha duas vezes: reconhece o que já existe, recusa
-# o que não cabe no produto, e lembra do que recusou.
+# A única etapa do sistema onde a imprevisibilidade é permitida - e é contida
+# logo depois: o texto gerado entra no mesmo funil de qualquer outra proposta.
 source "$(dirname "$0")/_comum.sh"
 
-titulo "D2 · o funil barrando trabalho repetido e fora de escopo"
+titulo "D2 · o sistema propondo melhorias sozinho"
 
-passo "1. Pedido de algo que o FinTrack já faz"
-espera "descartada_duplicata, batendo com 'Relatórios mensais'"
-E=$(post "$CORE/api/proposals/external" '{"user_id":1,"text":"Quero ver um relatório dos meus gastos por mês"}')
-obteve "$(campo "$E" outcome) - $(campo "$E" detail)"
-checar "reconhecida como duplicata" "$(campo "$E" outcome)" "descartada_duplicata"
-MATCH=$(printf '%s' "$E" | python -c "import sys,json;d=json.load(sys.stdin)['matched_ref'];print(f\"{d['kind']}#{d['ref_id']} sim={d['similarity']}\")" 2>/dev/null)
-nota "bateu com: $MATCH"
-nota "duplicate_count agora: $(campo "$E" duplicate_count)"
+passo "1. Geração Exploratória (temperatura 0.9)"
+espera "uma candidata coerente, ou um descarte legítimo do próprio funil"
+E=$(post "$CORE/api/proposals/ai-generate" '{"mode":"exploratoria"}')
+OUT=$(campo "$E" outcome)
+obteve "$OUT - $(campo "$E" detail)"
+case "$OUT" in
+  candidata|descartada_duplicata|descartada_incoerente|redirecionada_zona)
+    ok "desfecho legítimo do funil ($OUT)" ;;
+  *) falha "desfecho inesperado: $OUT" ;;
+esac
+nota "a proposta passou pelo mesmo filtro das demais - inclusive para ser recusada"
 
-passo "2. Pedido que viola o escopo do produto"
-espera "descartada_incoerente, com o motivo escrito e guardado"
-E=$(post "$CORE/api/proposals/external" '{"user_id":1,"text":"Adicionar um minigame de corrida de carros dentro do app para relaxar"}')
-obteve "$(campo "$E" outcome)"
-checar "recusada por incoerência" "$(campo "$E" outcome)" "descartada_incoerente"
-nota "motivo: $(campo "$E" detail)"
-
-passo "3. A mesma ideia, com outras palavras"
-espera "descartada_duplicata - a memória de descartes barra a reincidência"
-E=$(post "$CORE/api/proposals/external" '{"user_id":1,"text":"Colocar um joguinho de corrida no aplicativo pra distrair enquanto olho as contas"}')
-obteve "$(campo "$E" outcome) · duplicate_count=$(campo "$E" duplicate_count)"
-checar "barrada pela memória" "$(campo "$E" outcome)" "descartada_duplicata"
-checar "contador do descarte anterior subiu" "$(campo "$E" duplicate_count)" "2"
-nota "sem isso o mesmo pedido seria reavaliado - e recusado - toda vez que aparecesse"
+passo "2. Análise de Lacunas (temperatura baixa: é análise, não brainstorm)"
+espera "uma integração ainda não feita entre módulos existentes, ou nada"
+E=$(post "$CORE/api/proposals/ai-generate" '{"mode":"lacunas"}')
+OUT=$(campo "$E" outcome)
+obteve "$OUT - $(campo "$E" detail)"
+case "$OUT" in
+  candidata|descartada_duplicata|descartada_incoerente|redirecionada_zona|sem_proposta)
+    ok "desfecho legítimo ($OUT)" ;;
+  *) falha "desfecho inesperado: $OUT" ;;
+esac
 
 fim "D2"

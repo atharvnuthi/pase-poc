@@ -1,10 +1,9 @@
 """Tabelas do Task Layer (SPEC-03 §6) e a tabela `tasks` (SPEC-04 §1).
 
 Sobre `tasks`: ela é especificada no SPEC-04, mas nasce aqui - é o Task Layer
-que cria a Tarefa Candidata. Como esta fase usa `create_all` e não Alembic
-(decisão do SPEC-01 §6), colunas novas em tabela existente não seriam aplicadas
-depois. Por isso `tasks` já vem com o schema completo do SPEC-04 §1; o SPEC-03
-preenche apenas os campos que lhe cabem.
+que cria a Tarefa Candidata. O esquema completo da tabela mora aqui, e as
+migrações Alembic (`alembic/versions/`) o evoluem; o Task Layer preenche apenas
+os campos que lhe cabem.
 """
 
 from datetime import datetime
@@ -44,7 +43,7 @@ REASON_RECUSA_HUMANA = "recusa_humana"
 
 
 class Proposal(Base):
-    """Ideia bruta captada, em qualquer das quatro origens (SPEC-00 §2)."""
+    """Ideia bruta captada, de qualquer origem (SPEC-00 §2)."""
 
     __tablename__ = "proposals"
 
@@ -144,7 +143,7 @@ class Task(Base):
 
     # Campos consumidos pela Orquestração e pela Execução (SPEC-04)
     branch_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    #: SHA do merge na principal. Guardado, e não procurado no `git log` pela
+    #: SHA do merge da tarefa na develop. Guardado, e não procurado no `git log` pela
     #: mensagem - foi assim que a reversão teve de ser feita antes de existirem
     #: migrações, e era frágil por depender do formato do texto.
     merge_commit: Mapped[str | None] = mapped_column(String(40), nullable=True)

@@ -2,8 +2,8 @@
 
 É a única porta de entrada do PASE para o repositório. O isolamento exigido pelo
 SPEC-00 §7 acontece aqui: o Executor trabalha num clone em /tmp, numa branch
-`pase/task-{id}`, e nada entra na branch principal fora de `merge_branch()`,
-chamado apenas pela Homologação (SPEC-04 §5).
+`feature/pase-{id}-{slug}` (ou `hotfix/...`), e nada entra na branch principal
+fora de `publicar_release()`, que só uma release aprovada por uma pessoa aciona.
 """
 
 from __future__ import annotations
@@ -235,7 +235,7 @@ def changed_files(workspace: Workspace) -> list[str]:
 
 
 def merge_branch(branch: str, message: str) -> str:
-    """Traz a branch da task para a principal com --no-ff (SPEC-04 §5).
+    """Traz uma branch para a principal com --no-ff. Hoje só `publicar_release` a usa.
 
     Levanta MergeConflictError sem deixar o repositório em estado de conflito.
     """
@@ -253,11 +253,9 @@ def merge_branch(branch: str, message: str) -> str:
 def merge_commit_da_task(task_id: int) -> str | None:
     """SHA do merge que integrou esta tarefa na principal, ou None.
 
-    Procurado pela mensagem em vez de guardado em coluna: o esquema nasce no
-    boot, sem migrações, e acrescentar uma coluna obrigaria a zerar o banco para
-    poder reverter tarefas que já existem. A mensagem do merge é escrita pelo
-    próprio `aprovar()` num formato fixo, e `-F` garante que `(task #1)` não
-    case com `(task #11)`.
+    Alternativa para tarefas sem `merge_commit` gravado: procura pela mensagem do
+    merge, escrita pelo próprio `aprovar()` num formato fixo, e `-F` garante que
+    `(task #1)` não case com `(task #11)`.
     """
     repo = main_repo()
     saida = repo.git.log(

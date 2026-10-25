@@ -1,4 +1,4 @@
-"""O grafo de dependências entre tarefas (Fase 2 do roadmap).
+"""O grafo de dependências entre tarefas.
 
 Substituiu o `waiting_on_task_id`, que era um escalar: guardava só o último
 bloqueio, não dizia de onde ele vinha, e não tinha arestas para desenhar.

@@ -93,7 +93,7 @@ class Incident(Base):
     """Incidente operacional - dá ao Fator de Urgência algo real para ler (SPEC-04 §2).
 
     `source=sentry_stub` marca que nesta PoC a inserção é manual pelo painel; em
-    produção viria de uma integração real (ver SPEC-10).
+    produção viria de uma integração real.
     """
 
     __tablename__ = "incidents"

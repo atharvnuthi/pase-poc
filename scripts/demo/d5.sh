@@ -1,78 +1,53 @@
 #!/usr/bin/env bash
-# D5 - Defesa em profundidade (SPEC-05 §8, SPEC-00 §6).
+# D5 - Contenção da generatividade (SPEC-04 §10).
 #
-# Mesmo com a validação do core contornada, o cliente recusa. Uma Zona Dinâmica
-# nunca executa código arbitrário - e a regra não tem exceção neste projeto.
+# Os dois guardrails do SPEC-00 §4 são código que impede a ação, não prompt
+# pedindo cautela ao modelo. Aqui eles são forçados a atuar.
 source "$(dirname "$0")/_comum.sh"
-SLOT=resumo_financeiro
 
-titulo "D5 · três payloads maliciosos, três recusas"
-nota "O injetor grava PULANDO a validação do core. É o pior caso possível."
+titulo "D5 · o que acontece quando o Executor falha ou gasta demais"
 
-injetar() {
-  R=$(post "$CORE/api/upa/inject-raw" "{\"user_id\":1,\"slot\":\"$SLOT\",\"payload\":$2}")
-  nota "$1"
-  nota "  gravado como payload #$(campo "$R" payload_id), origin=injetado"
-  printf '%s' "$R" | python -c "import sys,json;print('    o core recusaria por:', '; '.join(json.load(sys.stdin)['erros_do_core'])[:160])" 2>/dev/null
-  REC=$(campo "$R" core_o_recusaria)
-  checar "  o core o consideraria inválido" "$REC" "True"
+criar() {
+  post "$CORE/api/proposals/internal" "{\"type\":\"funcional\",\"author\":\"Atharv\",\"text\":\"$1\"}" \
+    | python -c "import sys,json;print(json.load(sys.stdin).get('task_id') or '')"
 }
 
-passo "1. Label com 500 caracteres (estouro de layout)"
-injetar "label gigante" "{\"widget\":\"alert_banner\",\"label\":\"$(python -c 'print("x"*500)')\",\"tone\":\"atencao\"}"
-
-passo "2. Link externo (tentativa de phishing)"
-injetar "href externo" '{"widget":"shortcut_list","label":"Oferta imperdivel","maxItems":1,"items":[{"label":"Clique aqui","href":"https://site-externo.example/phishing"}]}'
-
-passo "3. Widget fora do catálogo (tentativa de injetar componente)"
-injetar "widget desconhecido" '{"widget":"iframe_injector","label":"Um iframe","tone":"neutral"}'
-
-passo "4. A validação do cliente, que é a definitiva"
-espera "o mesmo schema Zod que roda no navegador recusa os três"
-$COMPOSE exec -T client-frontend sh -c "cat > /tmp/d5.ts <<'TS'
-import { zonePayloadSchema, descreverErro } from '/app/dynamic-zones/schema.ts';
-const casos: [string, unknown][] = [
-  ['label gigante', { widget: 'alert_banner', label: 'x'.repeat(500), tone: 'atencao' }],
-  ['href externo', { widget: 'shortcut_list', label: 'Oferta', maxItems: 1, items: [{ label: 'Clique', href: 'https://site-externo.example/phishing' }] }],
-  ['widget desconhecido', { widget: 'iframe_injector', label: 'iframe', tone: 'neutral' }],
-];
-for (const [nome, p] of casos) {
-  const r = zonePayloadSchema.safeParse(p);
-  console.log(r.success ? 'ACEITO ' + nome : 'RECUSADO ' + nome + ' -> ' + descreverErro(r.error));
-}
-TS
-node --experimental-strip-types /tmp/d5.ts 2>/dev/null" | sed 's/^/    /'
-
-RECUSAS=$($COMPOSE exec -T client-frontend sh -c "node --experimental-strip-types /tmp/d5.ts 2>/dev/null" | grep -c RECUSADO)
-checar "os três recusados pelo cliente" "$(printf '%s' "$RECUSAS" | tr -d '[:space:]')" "3"
-
-passo "5. O SDK avisa o core de cada recusa"
-espera "três violações registradas, com motivos distintos"
-nota "é o POST que o <DynamicZone> dispara ao cair no fallback (SPEC-05 §5.4)"
-$COMPOSE exec -T client-frontend sh -c "node --experimental-strip-types /tmp/d5.ts 2>/dev/null"   | python -c "
-import json, sys, urllib.request
-enviadas = 0
-for linha in sys.stdin:
-    if not linha.startswith('RECUSADO'):
-        continue
-    motivo = linha.split('->', 1)[-1].strip()
-    corpo = json.dumps({'user_id': 1, 'slot': '$SLOT', 'reason': motivo}).encode()
-    req = urllib.request.Request(
-        '$CORE/api/upa/violations', data=corpo,
-        headers={'Content-Type': 'application/json'}, method='POST')
-    urllib.request.urlopen(req, timeout=20)
-    enviadas += 1
-print(f'    {enviadas} violação(ões) reportadas ao core')
-"
-MOTIVOS=$(get "$CORE/api/upa/violations" | python -c "
+passo "1. Teto de tentativas: duas falhas seguidas"
+espera "falha → retry → falha → suspensa com alerta 'retries'"
+A=$(criar   "Demo de falha controlada: acrescentar um campo de observacao na transacao"   "Permitir anexar uma nota livre a cada transacao"   "Exibir a data de criacao de cada transacao na listagem")
+[ -n "$A" ] || fim "D5"
+nota "task #$A criada"
+patch_ "$CORE/api/tasks/$A/demo" '{"force_fail_runs":2}' > /dev/null
+post "$CORE/api/tasks/$A/approve" '{}' > /dev/null
+ESTADO=$(esperar_estado "$A" "suspensa|em_homologacao|finalizada" 900)
+DET=$(get "$CORE/api/tasks/$A")
+ALERTA=$(printf '%s' "$DET" | python -c "import sys,json;print(json.load(sys.stdin)['task']['alert'])")
+obteve "$ESTADO / alerta=$ALERTA"
+checar "suspensa para decisão humana" "$ESTADO" "suspensa"
+checar "alerta de tentativas" "$ALERTA" "retries"
+printf '%s' "$DET" | python -c "
 import sys,json
-d=json.load(sys.stdin)
-print(len({v['reason'] for v in d}))")
-obteve "$MOTIVOS motivo(s) distinto(s) registrado(s)"
-checar "três violações com motivos diferentes" "$MOTIVOS" "3"
+for r in json.load(sys.stdin)['runs']:
+    print(f\"    tentativa {r['attempt']} [{r['trigger']}]: {r['status']} - {r['failure_reason']}\")"
+nota "o sistema não insiste para sempre: ele para e devolve a decisão a uma pessoa"
 
-passo "6. O que o usuário vê"
-nota "abra http://localhost:3001 como Ana: o dashboard mostra o resumo NATIVO."
-nota "cada recusa vira uma linha em http://localhost:3000/zonas, com o motivo e o payload bruto."
+passo "2. Teto de custo: budget de 100 tokens"
+espera "interrompida_budget, sem nenhuma chamada ao modelo"
+B=$(criar   "Permitir marcar uma transacao como favorita"   "Permitir arquivar uma transacao antiga sem excluir"   "Mostrar um contador de transacoes no rodape da listagem")
+[ -n "$B" ] || fim "D5"
+nota "task #$B criada"
+patch_ "$CORE/api/tasks/$B/demo" '{"budget_cap_tokens":100}' > /dev/null
+post "$CORE/api/tasks/$B/approve" '{}' > /dev/null
+ESTADO=$(esperar_estado "$B" "suspensa|em_homologacao|finalizada" 900)
+DET=$(get "$CORE/api/tasks/$B")
+ALERTA=$(printf '%s' "$DET" | python -c "import sys,json;print(json.load(sys.stdin)['task']['alert'])")
+obteve "$ESTADO / alerta=$ALERTA"
+checar "suspensa" "$ESTADO" "suspensa"
+checar "alerta de budget" "$ALERTA" "budget"
+printf '%s' "$DET" | python -c "
+import sys,json
+for r in json.load(sys.stdin)['runs']:
+    print(f\"    run: {r['status']}, {r['tokens_real']} tokens gastos - {r['failure_reason']}\")"
+nota "a verificação é preditiva: cortou ANTES de enviar a chamada que não cabia"
 
 fim "D5"

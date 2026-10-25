@@ -1,7 +1,7 @@
 """Memória vetorial do PASE (SPEC-01 §6).
 
 Todo SQL vetorial do projeto vive aqui - nenhum outro módulo escreve `<=>`,
-`::vector` ou toca a extensão pgvector diretamente (convenção do CLAUDE.md).
+`::vector` ou toca a extensão pgvector diretamente (convenção do README.md).
 
 As colunas `embedding` ficam nas próprias tabelas de domínio (`proposals`,
 `discarded_proposals`, `implemented_items` - ver SPEC-03 §7), e não numa tabela

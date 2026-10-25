@@ -1,17 +1,18 @@
-"""Pull Request de verdade no GitHub (Fase 5 do roadmap).
+"""Pull request da versão no GitHub.
 
-**Desligado por padrão.** Sem `GITHUB_TOKEN` o sistema segue exatamente como
-antes: a Homologação faz merge local e nada aqui é chamado. Não é meia
-implementação - é uma escolha. Abrir PR muda o modelo de confiança do projeto
-(passa a existir segredo e escrita num serviço externo), e uma PoC local que
-guarda um token por padrão convida ao acidente.
+**Desligado por padrão.** Sem `GITHUB_TOKEN` a entrega segue local: o PASE faz o
+papel do pull request (a aprovação humana, a validação e o texto do PR são exigidos
+do mesmo jeito) e só o merge na principal é local. Não é meia implementação - é uma
+escolha. Abrir PR muda o modelo de confiança do projeto (passa a existir segredo e
+escrita num serviço externo), e uma PoC local que guarda um token por padrão
+convida ao acidente.
 
 Ligar exige duas coisas: `GITHUB_TOKEN` no ambiente e `GITHUB_REPO` no formato
-`dono/repositorio`. Com as duas, o Executor abre PR ao terminar a run e a
-Homologação passa a fazer merge pelo PR em vez de localmente.
+`dono/repositorio`. Com as duas, a versão candidata (`release/x.x.x`) é proposta à
+principal por um pull request aberto pelo PASE, e a publicação é o merge dele.
 
 O `pase-core` chama esta API - **nunca o sandbox do Executor**, que continua sem
-rede além do provedor de LLM (CLAUDE.md).
+rede além do provedor de LLM (README.md).
 """
 
 from __future__ import annotations

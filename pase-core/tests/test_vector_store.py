@@ -82,7 +82,7 @@ def test_linha_inexistente_nao_grava_silenciosamente(memoria):
 
 @requires_db
 def test_kinds_de_tabelas_ainda_inexistentes_sao_ignorados(session):
-    """Em F0 as tabelas do SPEC-03 ainda não existem; search não pode quebrar."""
+    """Se as tabelas de um tipo ainda não existem, search não pode quebrar."""
     assert search("qualquer coisa", ["implemented", "discarded"], session=session) == []
 
 

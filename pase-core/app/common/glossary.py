@@ -79,7 +79,7 @@ ESTADOS = [
 DESFECHOS = [
     _verbete(
         "aprovada",
-        "Mergeada na branch principal.",
+        "Integrada na develop; chega à principal com a próxima release.",
         "você, na Homologação",
         "Entra em `implemented_items`: pedir a mesma coisa de novo vira duplicata.",
     ),

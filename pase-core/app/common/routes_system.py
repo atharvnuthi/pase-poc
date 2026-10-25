@@ -1,4 +1,4 @@
-"""O motor, visto por dentro (Fase 3 do roadmap).
+"""O motor, visto por dentro.
 
 O painel mostrava tarefas e nada sobre o próprio sistema: quantos vetores há na
 memória, quais prompts existem e quando cada um roda, quanto já se gastou. Sem
@@ -45,6 +45,8 @@ CATALOGO_DE_PROMPTS = [
     ("P6", "Payload de Zona Dinâmica", "UPA", 0.2),
     ("P9", "Análise de Deriva", "Reavaliação Cíclica", 0.1),
     ("P10", "Varredura de Auditoria", "Ciclo de Auditoria", 0.2),
+    ("P11", "Proposta de atualização de contexto", "Homologação", 0.1),
+    ("P12", "Revisão independente", "Execução", 0.0),
 ]
 
 

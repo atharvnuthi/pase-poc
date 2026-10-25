@@ -60,7 +60,7 @@ def _proxima_tentativa(session: Session, task_id: int) -> int:
 def conflito_de_arquivos(session: Session, task: Task, plano: PlanningDocument) -> Task | None:
     """Alguma tarefa em andamento já está mexendo nos mesmos arquivos?
 
-    Sem sub-DAG nem replanejamento (SPEC-10): a segunda tarefa simplesmente
+    Sem sub-DAG nem replanejamento (fora do escopo da PoC): a segunda tarefa simplesmente
     espera a primeira sair de cena.
     """
     previstos = set(plano.affected_files or [])

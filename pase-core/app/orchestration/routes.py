@@ -755,8 +755,8 @@ def refazer(
 # Incidentes e urgência
 # --------------------------------------------------------------------------- #
 
-#: Peso de cada severidade no Fator de Urgência (§2). Soma simples nesta fase;
-#: SLA e decaimento temporal estão no SPEC-10.
+#: Peso de cada severidade no Fator de Urgência (§2). Soma simples: SLA e
+#: decaimento temporal ficaram fora do escopo da prova de conceito.
 PESO_URGENCIA = {"alto": 3.0, "medio": 1.0, "baixo": 0.0}
 
 
@@ -913,7 +913,7 @@ def servir_artefato(
 
 
 # --------------------------------------------------------------------------- #
-# Grafo de dependências e edição da tarefa (Fase 2 do roadmap)
+# Grafo de dependências e edição da tarefa
 # --------------------------------------------------------------------------- #
 
 

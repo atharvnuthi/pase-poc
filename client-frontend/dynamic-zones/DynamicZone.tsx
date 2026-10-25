@@ -24,6 +24,12 @@ import { WIDGETS } from "./widgets";
 
 const CORE_URL = process.env.NEXT_PUBLIC_CORE_URL ?? "http://localhost:8000";
 
+/**
+ * Recusas já avisadas nesta carga da página. O modo estrito do React executa cada efeito
+ * duas vezes em desenvolvimento, e sem isto a mesma recusa virava dois registros.
+ */
+const jaReportadas = new Set<string>();
+
 /** Avisa o core que um payload foi recusado. Fire-and-forget (§5.4). */
 function reportarViolacao(
   userId: number,
@@ -31,6 +37,10 @@ function reportarViolacao(
   reason: string,
   rawPayload: unknown,
 ): void {
+  const chave = JSON.stringify([userId, slot, reason, rawPayload ?? null]);
+  if (jaReportadas.has(chave)) return;
+  jaReportadas.add(chave);
+
   void fetch(`${CORE_URL}/api/upa/violations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -1,7 +1,8 @@
 """Entrada do pase-core - o motor do PASE.
 
-Nesta fase (SPEC-01) sobe apenas a infraestrutura: schema criado no boot e
-/health. As rotas de domínio entram com os SPECs que as definem.
+Cria a aplicação FastAPI: aplica as migrações do banco no boot, registra as rotas
+do Task Layer, da Orquestração, da entrega, do UPA, das métricas, dos eventos, do
+contexto, do sistema e dos jobs, e expõe `/health`.
 """
 
 import logging
@@ -41,7 +42,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="PASE Core", version="0.1.0", lifespan=lifespan)
 
-# PoC local, sem autenticação: só os dois frontends do projeto (CLAUDE.md).
+# PoC local, sem autenticação: só os dois frontends do projeto (README.md).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.cors_origins),

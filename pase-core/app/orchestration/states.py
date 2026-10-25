@@ -112,7 +112,8 @@ def transicionar(
 def score_de_prioridade(task: Task) -> float:
     """`impact − complexity + urgency_score` (SPEC-04 §2).
 
-    Deliberadamente simples nesta fase; SLA e decaimento temporal estão no SPEC-10.
+    Deliberadamente simples: SLA e decaimento temporal ficaram fora do escopo da
+    prova de conceito.
     """
     return (task.impact or 0) - (task.complexity or 0) + (task.urgency_score or 0.0)
 

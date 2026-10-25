@@ -341,7 +341,7 @@ def avaliar(
 ) -> dict | None:
     """Ponto de entrada do fluxo autônomo. Seguro para rodar em background.
 
-    `ignorar_regra` existe para a demonstração: o D4 não pode depender de alguém
+    `ignorar_regra` existe para a demonstração: o D3 não pode depender de alguém
     navegar cinco vezes na tela certa, nem esperar o intervalo entre avaliações.
     """
     try:

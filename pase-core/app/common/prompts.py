@@ -1,6 +1,6 @@
 """Carregamento dos prompts versionados (`app/prompts/`).
 
-Convenção do CLAUDE.md: um arquivo `.md` por prompt, nunca texto inline no
+Convenção do README.md: um arquivo `.md` por prompt, nunca texto inline no
 código Python. Assim o prompt entra no `git log` como qualquer outro artefato -
 é possível ligar uma decisão do sistema à versão exata do prompt que a produziu.
 

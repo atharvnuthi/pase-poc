@@ -1,4 +1,4 @@
-"""Os prompts versionados (CLAUDE.md: um arquivo por prompt, nunca inline)."""
+"""Os prompts versionados (README.md: um arquivo por prompt, nunca inline)."""
 
 import pytest
 
@@ -74,3 +74,11 @@ def test_exemplo_de_json_real_num_prompt_do_projeto():
 def test_prompt_inexistente_falha():
     with pytest.raises(prompts.PromptError, match="não encontrado"):
         prompts.render("P99")
+
+
+def test_catalogo_do_painel_cobre_todos_os_prompts_do_disco():
+    """Prompt que existe e roda tem que aparecer na tela de Sistema."""
+    from app.common.routes_system import CATALOGO_DE_PROMPTS
+
+    no_disco = {p.stem for p in prompts.PROMPTS_DIR.glob("*.md")}
+    assert {p[0] for p in CATALOGO_DE_PROMPTS} == no_disco

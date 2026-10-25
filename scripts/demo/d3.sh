@@ -1,33 +1,41 @@
 #!/usr/bin/env bash
-# D3 - Geração por IA (SPEC-03 §8.9).
+# D3 - Personalização em runtime (SPEC-05 §8).
 #
-# A única etapa do sistema onde a imprevisibilidade é permitida - e é contida
-# logo depois: o texto gerado entra no mesmo funil de qualquer outra proposta.
+# O loop rápido: segundos, sem gate humano, sem tocar o repositório. O que
+# substitui a aprovação humana é a validação de contrato.
 source "$(dirname "$0")/_comum.sh"
+SLOT=resumo_financeiro
 
-titulo "D3 · o sistema propondo melhorias sozinho"
+titulo "D3 · a interface se adaptando ao comportamento de cada usuário"
 
-passo "1. Geração Exploratória (temperatura 0.9)"
-espera "uma candidata coerente, ou um descarte legítimo do próprio funil"
-E=$(post "$CORE/api/proposals/ai-generate" '{"mode":"exploratoria"}')
-OUT=$(campo "$E" outcome)
-obteve "$OUT - $(campo "$E" detail)"
-case "$OUT" in
-  candidata|descartada_duplicata|descartada_incoerente|redirecionada_zona)
-    ok "desfecho legítimo do funil ($OUT)" ;;
-  *) falha "desfecho inesperado: $OUT" ;;
-esac
-nota "a proposta passou pelo mesmo filtro das demais - inclusive para ser recusada"
+passo "1. Estado inicial: ninguém tem personalização"
+for U in 1 2; do
+  C=$(curl -s -o /dev/null -w '%{http_code}' "$CORE/api/upa/zones/$SLOT/payload?user_id=$U")
+  nota "user $U → HTTP $C"
+done
 
-passo "2. Análise de Lacunas (temperatura baixa: é análise, não brainstorm)"
-espera "uma integração ainda não feita entre módulos existentes, ou nada"
-E=$(post "$CORE/api/proposals/ai-generate" '{"mode":"lacunas"}')
-OUT=$(campo "$E" outcome)
-obteve "$OUT - $(campo "$E" detail)"
-case "$OUT" in
-  candidata|descartada_duplicata|descartada_incoerente|redirecionada_zona|sem_proposta)
-    ok "desfecho legítimo ($OUT)" ;;
-  *) falha "desfecho inesperado: $OUT" ;;
-esac
+passo "2. A Ana usa relatórios intensamente"
+espera "a regra dispara (5 acessos em 7 dias) e o modelo propõe uma personalização"
+R=$(post "$CORE/api/upa/simulate" '{"user_id":1,"scenario":"ana_relatorios"}')
+obteve "personalizado=$(campo "$R" personalizado)"
+checar "zona configurada" "$(campo "$R" personalizado)" "True"
+printf '%s' "$R" | python -c "import sys,json;print('    payload:',json.dumps(json.load(sys.stdin)['payload'],ensure_ascii=False))" 2>/dev/null
+
+passo "3. Ana tem widget; Clara continua no componente nativo"
+espera "user 1 → 200 · user 2 → 204"
+A=$(curl -s -o /dev/null -w '%{http_code}' "$CORE/api/upa/zones/$SLOT/payload?user_id=1")
+C=$(curl -s -o /dev/null -w '%{http_code}' "$CORE/api/upa/zones/$SLOT/payload?user_id=2")
+obteve "Ana → HTTP $A · Clara → HTTP $C"
+checar "Ana personalizada" "$A" "200"
+checar "Clara no nativo" "$C" "204"
+nota "abra http://localhost:3001 como Ana e como Clara para ver a diferença na tela"
+
+passo "4. Revogar devolve a Ana ao componente nativo"
+espera "204 depois da revogação"
+PID=$(get "$CORE/api/upa/payloads" | python -c "import sys,json;d=[p for p in json.load(sys.stdin) if p['user_id']==1 and p['status']=='ativo'];print(d[0]['id'] if d else '')")
+post "$CORE/api/upa/payloads/$PID/revoke" '{}' > /dev/null
+A=$(curl -s -o /dev/null -w '%{http_code}' "$CORE/api/upa/zones/$SLOT/payload?user_id=1")
+obteve "HTTP $A"
+checar "voltou ao nativo" "$A" "204"
 
 fim "D3"

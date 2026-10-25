@@ -3,7 +3,7 @@
 Regras de negócio centrais (ver o documento project-context, no contexto do PASE):
 - toda transação pertence a exatamente um usuário e uma categoria;
 - valores são sempre positivos - o `type` determina o sinal no cálculo de saldo;
-- categorias são fixas nesta fase (não há CRUD de categoria pelo usuário final).
+- categorias são fixas (não há CRUD de categoria pelo usuário final).
 """
 
 from datetime import UTC, datetime

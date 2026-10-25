@@ -17,7 +17,7 @@ vê saldo e gastos por categoria, consulta relatórios mensais.
 ## Regras de negócio centrais (violação = descarte por incoerência)
 - Toda transação pertence a exatamente um usuário e uma categoria.
 - Valores são sempre positivos; o tipo (receita/despesa) determina o sinal no cálculo de saldo.
-- Categorias são fixas nesta fase (não há CRUD de categoria pelo usuário final).
+- Categorias são fixas (não há CRUD de categoria pelo usuário final).
 - Não há autenticação real - usuário é selecionado por persona (PoC).
 
 ## Fora de escopo por decisão de produto (não confundir com "fora de escopo técnico")

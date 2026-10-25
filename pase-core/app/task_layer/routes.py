@@ -1,7 +1,8 @@
 """Endpoints de ingestão do Task Layer (SPEC-03 §1).
 
-Três das quatro origens têm endpoint. A quarta - Captação Passiva - roda em
-background, lendo tickets do FinTrack (`app/jobs/passive_capture.py`).
+A Captação Ativa, a Sugestão Interna e a Geração por IA têm endpoint. A
+Captação Passiva roda em background, lendo tickets do FinTrack
+(`app/jobs/passive_capture.py`).
 
 O funil roda na própria requisição: são segundos, aceitável nesta PoC, e mantém
 a resposta síncrona que o modal do FinTrack exibe ao usuário.

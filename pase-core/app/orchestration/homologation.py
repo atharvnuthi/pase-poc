@@ -1,11 +1,12 @@
-"""Homologação - o gate humano que libera código para a branch principal (SPEC-04 §5).
+"""Homologação - o gate humano sobre a entrega de uma tarefa (SPEC-04 §5).
 
 É o ponto do modelo onde a autonomia termina e a decisão volta a ser de uma
 pessoa. O humano revisa o que **já passou pela máquina** (lint e testes verdes,
 SPEC-00 §5); ele não é a primeira linha de defesa, é a última.
 
-Três saídas: aprovar (merge na principal), ajustar (nova run com o comentário)
-ou recusar (entra no Histórico de Descartes, com embedding).
+Três saídas: aprovar (integra na `develop`; só uma release chega à principal),
+ajustar (nova run com o comentário) ou recusar (entra no Histórico de Descartes,
+com embedding).
 """
 
 from __future__ import annotations
@@ -121,7 +122,7 @@ def aprovar(session: Session, task: Task, comentario: str | None) -> dict:
     )
     # Se era uma zona, ela passa a constar como homologada por consequência: o
     # `zona_homologada()` do Task Layer consulta exatamente tasks nesta situação.
-    logger.info("task #%s integrada na principal (%s)", task.id, sha[:8])
+    logger.info("task #%s integrada na develop (%s)", task.id, sha[:8])
     return {
         "merged": True,
         "commit": sha,

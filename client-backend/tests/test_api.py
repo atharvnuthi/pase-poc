@@ -1,8 +1,8 @@
 """Rede de regressão do FinTrack (SPEC-02 §1).
 
-Estes 9 testes são o que impede o Executor do PASE de entregar uma mudança que
+Estes testes são o que impede o Executor do PASE de entregar uma mudança que
 quebra o app: eles rodam dentro do container do Executor, antes de qualquer
-artefato chegar ao humano (SPEC-00 §5). Congelados ao fim da F1 - mudar um
+artefato chegar ao humano (SPEC-00 §5). Congelados desde a primeira versão - mudar um
 destes testes é mudar o contrato, e exige aviso explícito.
 """
 

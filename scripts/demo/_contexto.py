@@ -1,4 +1,4 @@
-"""Edita os documentos de contexto pela API, para a demo D8.
+"""Edita os documentos de contexto pela API, para a demo D7.
 
     python _contexto.py remover "<frase>" <arquivo-de-backup>
     python _contexto.py restaurar <arquivo-de-backup>
@@ -8,7 +8,7 @@ Os documentos moram no banco do PASE, não em arquivo: a demo fazia `sed` no
 documento (no contexto e no escopo, por exemplo), então a demo remove de todos e guarda o
 texto original para devolver no fim.
 
-Num arquivo próprio, e não embutido no shell, pelo mesmo motivo do `_rota.py`.
+Num arquivo próprio, e não embutido no shell: Python dentro de heredoc de bash acumula níveis de escape e quebra em silêncio.
 """
 
 import json
@@ -40,7 +40,7 @@ def remover(frase, arquivo):
             continue
         salvo[slug] = conteudo
         novo = "\n".join(l for l in conteudo.split("\n") if frase not in l)
-        req("PUT", f"/api/context/doc/{slug}", {"content": novo, "note": "demo D8: remove a restrição"})
+        req("PUT", f"/api/context/doc/{slug}", {"content": novo, "note": "demo D7: remove a restrição"})
     with open(arquivo, "w", encoding="utf-8") as f:
         json.dump(salvo, f, ensure_ascii=False)
     print(len(salvo))
@@ -50,7 +50,7 @@ def restaurar(arquivo):
     with open(arquivo, encoding="utf-8") as f:
         salvo = json.load(f)
     for slug, conteudo in salvo.items():
-        req("PUT", f"/api/context/doc/{slug}", {"content": conteudo, "note": "demo D8: restaura"})
+        req("PUT", f"/api/context/doc/{slug}", {"content": conteudo, "note": "demo D7: restaura"})
     print(len(salvo))
 
 

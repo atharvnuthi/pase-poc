@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 
 /**
  * Canal de suporte. Cada ticket daqui é lido pela Captação Passiva do Task
- * Layer (SPEC-03 §2) - é uma das quatro origens de demanda do modelo PASE.
+ * Layer (SPEC-03 §2) - é uma das origens de demanda do modelo PASE.
  */
 
 export default function Suporte() {

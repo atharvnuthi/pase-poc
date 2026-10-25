@@ -245,7 +245,7 @@ def test_arquivo_fora_do_previsto_vira_desvio(session, task_com_plano, mock_prov
 
 @requires_db
 def test_falha_controlada_do_modo_demo(session, task_com_plano, mock_providers):
-    """Instrumento do D6(a): falha depois da geração, com custo e transcript reais."""
+    """Instrumento do D5(a): falha depois da geração, com custo e transcript reais."""
     task, plano = task_com_plano
     task.demo_force_fail_runs = 2
     session.add(task)
@@ -333,7 +333,7 @@ def test_acrescentar_testes_e_permitido():
 
 
 # --------------------------------------------------------------------------- #
-# SPEC-11: dois alvos, com fronteira
+# Dois alvos, com fronteira
 # --------------------------------------------------------------------------- #
 
 
@@ -553,7 +553,7 @@ def test_next_nao_fica_no_clone_depois_do_gate(tmp_path, monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
-# Fase 1: comportamento novo exige teste novo
+# Comportamento novo exige teste novo
 # --------------------------------------------------------------------------- #
 
 
@@ -682,7 +682,7 @@ def test_teste_novo_nao_conta_como_desvio():
 
 
 # --------------------------------------------------------------------------- #
-# Fase 1: a cobertura dos arquivos alterados não pode cair
+# A cobertura dos arquivos alterados não pode cair
 # --------------------------------------------------------------------------- #
 
 

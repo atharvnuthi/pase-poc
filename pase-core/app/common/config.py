@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     # prompt sozinho tem ~8800 - a estimativa do modelo erra por ordem de grandeza e,
     # sem piso, o guardrail barra toda tarefa honesta em vez de barrar loop desgovernado.
     # 60k cobre uma execução completa deste alvo (1 geração + 2 correções) com folga.
-    # Subiu no SPEC-11 §7: com os dois alvos no contexto, cada chamada do P5 leva
+    # Subiu quando os dois alvos entraram no contexto: cada chamada do P5 leva
     # ~20.700 tokens em vez de ~8.900. O piso antigo estourava na primeira execução honesta.
     # Subiu de novo com os modelos de raciocínio: o "pensar" é cobrado como saída,
     # a chamada de geração passou de ~37k, e entrou a revisão independente (P12),
@@ -93,19 +93,19 @@ class Settings(BaseSettings):
     max_local_fix: int = 4
     coherence_max_adjustments: int = 2
 
-    # --- GitHub (Fase 5; desligado sem token) ---
-    # Vazio de propósito: com token, o Executor passa a abrir PR de verdade e a
-    # Homologação mergeia pelo PR. Sem ele, tudo segue local, como sempre foi.
+    # --- GitHub (desligado sem token) ---
+    # Vazio de propósito: com token, o PASE abre o pull request da versão de verdade
+    # e a publicação é o merge dele. Sem ele, tudo segue local.
     github_token: str = ""
     github_repo: str = ""  # "dono/repositorio"
 
     demo_mode: bool = True
 
     # Autores com papel para abrir Sugestão de Engenharia (SPEC-03 §4).
-    # Lista fixa em env nesta fase; RBAC real está no SPEC-10.
+    # Lista fixa em variável de ambiente: a PoC não tem papéis de usuário.
     engineering_authors: str = "PASE Audit"
 
-    # CORS: PoC local, sem autenticação (ver CLAUDE.md)
+    # CORS: PoC local, sem autenticação (ver README.md)
     cors_origins: tuple[str, ...] = (
         "http://localhost:3000",
         "http://localhost:3001",

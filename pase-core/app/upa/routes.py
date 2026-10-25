@@ -161,7 +161,7 @@ def simular(
 ) -> dict:
     """Insere os 5 `page_view` do cenário e avalia na hora (§3).
 
-    Existe para a demonstração ser repetível: o D4 não pode depender de alguém
+    Existe para a demonstração ser repetível: o D3 não pode depender de alguém
     navegar cinco vezes na tela certa. A avaliação aqui é síncrona, porque quem
     chamou está esperando para ver o resultado.
     """
@@ -193,7 +193,7 @@ def injetar_bruto(
     payload: InjectRawIn,
     session: Session = Depends(get_session),
 ) -> dict:
-    """Grava um payload **pulando a validação do core** (§3) - instrumento do D5.
+    """Grava um payload **pulando a validação do core** (§3) - instrumento do D4.
 
     Contornar a própria validação é o ponto: é assim que se demonstra que a
     defesa não depende de uma camada só. O cliente ainda vai recusar, cair no

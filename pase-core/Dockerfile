@@ -9,9 +9,9 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
-# git para o isolamento do Executor; Node porque, a partir do SPEC-11, ele também
-# verifica o client-frontend (tsc + vitest) - mesma simetria que já valia para o
-# ruff/pytest do client-backend (SPEC-01 §3).
+# git para o isolamento do Executor; Node porque ele também verifica o
+# client-frontend (tsc, vitest e next build) - mesma simetria do ruff/pytest no
+# client-backend.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git curl ca-certificates \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \

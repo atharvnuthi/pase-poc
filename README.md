@@ -2,128 +2,101 @@
 
 **Atharv Nuthi** · **Felipe Vahia Malliagros**
 
-PoC do TCC. O **PASE** é o motor: recebe demandas de quatro origens, filtra com IA,
-prioriza, executa mudanças de código sob aprovação humana, e personaliza a interface em
-runtime. O **FinTrack** é o produto-alvo que o PASE evolui - um dashboard financeiro
-simples. Nunca confundir os dois: o FinTrack é o paciente, o PASE é o sistema.
+Prova de conceito do Trabalho de Conclusão de Curso *Arquitetura PASE: autonomia
+supervisionada com agentes de IA no ciclo de vida de software, a partir de uma análise
+multidimensional do ecossistema* (Universidade Federal Fluminense, Instituto de Computação,
+2026; orientador: Prof. Troy Costa Kohwalter).
 
-O modelo opera em **três loops concêntricos** (SPEC-00 §1):
+A ideia: deixar agentes de IA fazerem o máximo do ciclo de vida de um software, com uma
+pessoa decidindo onde a decisão tem consequência, e com tudo que dá para conferir por código
+conferido por código.
 
-| Loop | O que faz | Latência | Gate |
-|---|---|---|---|
-| **Lento** - evolução de código | Task Layer → Orquestração → Execução | minutos | aprovação humana, sempre |
-| **Rápido** - personalização | UPA preenche propriedades de componentes existentes | segundos | validação de contrato |
-| **Manutenção** | auditoria de código e reavaliação de descartes | job periódico | reinjeta nos outros dois |
+O repositório tem dois sistemas, e é importante não confundi-los:
 
-## Documentação
+- **PASE** é o motor. Recebe demandas de várias origens, filtra com IA, prioriza, executa
+  mudanças de código sob aprovação humana, entrega a versão por *pull request* e personaliza a
+  interface em tempo de execução.
+- **FinTrack** é o produto de exemplo que o PASE evolui: um painel financeiro pessoal com seis
+  telas e duas personas fictícias, Ana e Clara, com dados sintéticos.
 
-| Para saber | Leia |
-|---|---|
-| **sobre o projeto e o que ele demonstrou** | [`docs/sobre-o-projeto.md`](docs/sobre-o-projeto.md) |
-| o que já existe, e o que não existe | [`docs/STATUS.md`](docs/STATUS.md) |
-| o que o sistema faz | [`docs/features.md`](docs/features.md) |
-| como está montado, e por quê | [`docs/architecture-and-design.md`](docs/architecture-and-design.md) |
-| o que ele deliberadamente **não** faz | [`docs/scope-and-constraints.md`](docs/scope-and-constraints.md) |
-| tabelas, colunas e busca vetorial | [`docs/database.md`](docs/database.md) |
-| as duas interfaces | [`docs/ui-ux.md`](docs/ui-ux.md) |
-| o contexto do **produto** (escopo, requisitos, guia de engenharia, ADRs...) | tela **Contexto** do painel: mora no banco, não no repositório |
-| para onde o projeto vai | [`docs/roadmap.md`](docs/roadmap.md) |
-| fluxo de ramos e entrega | [`docs/entrega-no-pase.md`](docs/entrega-no-pase.md) |
+## Como o PASE está organizado
 
-As especificações originais, escritas antes da primeira linha de código, estão em
-[`docs/historico-specs/`](docs/historico-specs/). Elas descrevem o que foi *planejado* -
-a distância entre elas e o `STATUS.md` é resultado do trabalho, não defeito dele.
+| Camada | O que faz | Código |
+|---|---|---|
+| Tarefas | transforma texto bruto em tarefa candidata: normalização, avaliação de zona, memória histórica, coerência com o contexto e qualificação | `pase-core/app/task_layer` |
+| Orquestração | prioriza, monta o grafo de dependências, aplica as decisões humanas, trata falhas e custo, e entrega em estágios | `pase-core/app/orchestration`, `pase-core/app/jobs` |
+| Execução | planeja e depois escreve o código em clone isolado, verifica e passa por revisão independente | `pase-core/app/execution` |
+| UPA e Zonas Dinâmicas | personaliza preenchendo propriedades de componentes que já existem, sem gerar código | `pase-core/app/upa`, `client-frontend/dynamic-zones` |
 
-## Subida
+O painel de quem decide está em `pase-panel`; o FinTrack, em `client-backend` e
+`client-frontend`. O contrato das Zonas Dinâmicas é um único JSON Schema, em
+`docs/contracts/zona.schema.json`, e os quinze *prompts* ficam um por arquivo em
+`pase-core/app/prompts`.
 
-Requer Docker Desktop. GNU `make` é opcional - cada alvo tem um `docker compose`
-equivalente logo abaixo.
+A regra que atravessa o projeto: garantia que depende só de instrução ao modelo não é
+garantia. O modelo aponta a evidência e o código confere. Por isso a citação da Coerência
+Sistêmica, a preservação dos testes existentes, a fronteira de escrita do Executor, a trava
+de custo e a validação das zonas são código.
+
+## Comece por aqui
 
 ```bash
-cp .env.example .env     # preencha LLM_API_KEY
-make up                  # sobe db + 4 serviços e espera todos ficarem healthy
-make seed                # popula o FinTrack e o baseline do PASE
+git clone https://github.com/atharvnuthi/pase-poc.git && cd pase-poc
+cp .env.example .env          # coloque a sua chave da OpenAI em LLM_API_KEY
+docker compose up -d --build --wait
+docker compose exec -T client-backend python -m app.seed
+docker compose exec -T pase-core python -m app.seed
 ```
 
-**Sobre a chave de API.** Nenhum componente depende da Anthropic: todo acesso a LLM passa
-por `pase-core/app/common/llm_client.py`, que aceita `openai`, `anthropic` ou `mock`. Com
-uma chave OpenAI apenas, use o perfil comentado no `.env.example`. Sem chave nenhuma, o
-perfil `mock` sobe tudo e roda os testes - só as demos precisam de modelo real.
+Painel em http://localhost:3000, FinTrack em http://localhost:3001. O **[SETUP.md](SETUP.md)**
+tem o passo a passo completo: rodar sem chave, usar só o painel com o seu software, pôr
+Zonas Dinâmicas no seu app, rodar os testes e adaptar o Executor ao seu produto.
 
-| Serviço | URL | Papel |
-|---|---|---|
-| `pase-panel` | http://localhost:3000 | painel de controle humano |
-| `client-frontend` | http://localhost:3001 | FinTrack, o app-alvo |
-| `pase-core` | http://localhost:8000 | motor do PASE |
-| `client-backend` | http://localhost:8001 | API do FinTrack |
-| `db` | localhost:5432 | Postgres 16 + pgvector (`pase`/`pase`) |
+## Evidência da validação
 
-## Comandos
+O histórico do repositório guarda a cadeia descrita no Capítulo 6 da monografia:
 
-| Make | Equivalente sem make |
+| Commit | O que é |
 |---|---|
-| `make up` | `docker compose up -d --build --wait` |
-| `make down` · `make logs` · `make ps` | `docker compose down` · `logs -f` · `ps` |
-| `make seed` | `docker compose exec -T client-backend python -m app.seed` e o mesmo em `pase-core` |
-| `make reset` | `down -v` + `up` + `seed` |
-| `make test-core` · `make test-client` | `docker compose exec -T <serviço> pytest -q` |
-| `make migrate` · `make migration m="..."` | `docker compose exec -T pase-core alembic upgrade head` / `revision --autogenerate` |
-| `make lint` | `docker compose exec -T pase-core sh -c "cd /workspace/repo && ruff check pase-core client-backend"` |
-| `make demos` | roda os oito roteiros em sequência |
-| `make demo-d1` … `demo-d8` | `bash scripts/demo/dN.sh` |
-| `make metrics` | baixa os três CSVs para `./metrics/` |
+| `19968db` | estado inicial: FinTrack e PASE prontos, com 15 funcionalidades implementadas e 4 propostas recusadas na memória |
+| `340d910` | modo escuro do FinTrack, escrito pelo Executor do PASE (tarefa nº 1) |
+| `f61cded` | integração da tarefa no ramo `develop`, após homologação |
+| `8b783b5` | versão 1.0.0, publicada pelo *merge* do pull request nº 3 |
 
-Os testes rodam num banco separado (`pase_test`), criado sob demanda - rodar a suíte não
-apaga os dados da aplicação.
+Os commits `340d910` e `f61cded` têm como autor o próprio sistema (`PASE Bot` e `PASE`), e o
+`8b783b5` é o *merge* feito no GitHub. O commit seguinte prepara o repositório para
+publicação e reúne duas correções feitas depois da release (o catálogo de *prompts* da tela
+Sistema passou a listar os quinze, e uma violação recusada pelo cliente passou a ser
+registrada uma vez só). Os pull requests nº 1 e nº 2 foram abertos por uma execução da suíte
+de testes contra o GitHub real, antes de ela ser isolada (hoje o token é zerado em todo
+teste), e não fazem parte da validação. Por isso o `#1` no corpo do PR nº 3 aparece como
+link para eles: ali ele significa a tarefa nº 1 do PASE.
 
-## Os oito roteiros de demonstração
+## O que fica fora desta prova de conceito
 
-Cada script anuncia o que espera antes de cada passo, para ser lido em voz alta enquanto
-roda. Pré-requisito comum: `make reset && make seed`, e o seu trabalho commitado (d1 e d6
-fazem merge de verdade na branch principal).
+Prospecção competitiva e recompensa por contribuição; pesos e limiares automáticos no grafo
+de dependências, subgrafos, replanejamento automático e resolução automática de conflitos de
+integração; contêiner efêmero com rede bloqueada (o isolamento atual é clone, ramo exclusivo
+e ambiente sem credenciais, não isolamento de rede) e ambiente temporário de visualização;
+gatilhos de frustração, zonas sob demanda conversacionais, barramento de eventos entre
+zonas e fluxos de múltiplas etapas. Também não há autenticação, múltiplos papéis nem
+*multi-tenancy*.
 
-| Demo | O que prova | Resultado esperado |
-|---|---|---|
-| **d1** | evolução de código de ponta a ponta | proposta → aprovação → planejamento → execução → diff, logs e transcript → homologação → merge → endpoint novo respondendo 200 no app rodando |
-| **d2** | Memória Histórica | pedido do que já existe vira `descartada_duplicata`; pedido fora de escopo vira `descartada_incoerente`; a mesma ideia reescrita é barrada pela memória de descartes |
-| **d3** | geração por IA | Geração Exploratória e Análise de Lacunas produzem propostas que passam pelo mesmo funil - inclusive para serem recusadas |
-| **d4** | personalização em runtime | 5 acessos a `/relatorios` disparam a regra; a Ana recebe um widget, a Clara continua no componente nativo; revogar restaura |
-| **d5** | defesa em profundidade | três payloads maliciosos gravados **pulando** a validação do core são recusados pelo cliente; o dashboard permanece no nativo e três violações ficam registradas |
-| **d6** | contenção da generatividade | duas falhas seguidas → `suspensa/retries`; teto de 100 tokens → `interrompida_budget` sem gastar nada |
-| **d7** | Captação Passiva → Zona Dinâmica | tickets de suporte sobre a mesma dor, com saídas divergentes, viram uma tarefa com `output_type=zona_dinamica` |
-| **d8** | jobs de manutenção | a auditoria lê o código e propõe uma melhoria; a reavaliação relê descartes e reintroduz o que deixou de ser incoerente |
+## Para quem vai mexer no código
 
-**Reproduzir a d1 do zero.** Ela adiciona um endpoint de exportação ao client-backend e o
-merge fica no histórico. Para rodá-la de novo, `make reset` (limpa a memória do PASE) e
-`git revert -m 1 <commit do merge>` (devolve o código ao estado anterior) - senão o próprio
-funil, corretamente, barrará o segundo pedido como duplicata.
+- Código e identificadores em inglês; interface, *prompts* e commits em português.
+- Commits no formato `<tipo>(<escopo>): descrição`, com tipo em `feature`, `fix`,
+  `refactor`, `docs`, `test` ou `chore`.
+- Toda chamada a modelo passa por `pase-core/app/common/llm_client.py`, e todo SQL vetorial
+  fica em `pase-core/app/common/vector_store.py`. *Prompts* nunca ficam embutidos no código.
+- No `pase-core`, toda mudança de esquema é uma migração Alembic, e `create_all` só existe na
+  suíte de testes. O `client-backend` cria suas tabelas com SQLModel no boot.
+- As branches `feature/pase-{id}-{slug}` e `hotfix/...` são do Executor e nunca são editadas à
+  mão; só `release/x.x.x` chega à principal, por pull request e aprovação humana.
+- Comentários que citam `SPEC-nn` apontam para as especificações originais, escritas antes do
+  código. Elas descrevem o que foi planejado, não o que existe, e ficam no histórico:
+  `git show 19968db:docs/historico-specs/SPEC-05-upa-zonas.md`.
 
-## Métricas
+## Licença
 
-`make metrics` baixa os três anexos do capítulo de validação:
-
-- `tasks.csv` - uma linha por tarefa, com o agregado das execuções
-- `discards.csv` - uma linha por descarte, com motivo e contador de recorrência
-- `violations.csv` - uma linha por payload que o cliente recusou renderizar
-
-As três medidas citadas na conclusão da monografia saem de `tasks.csv`:
-
-| Medida | Como calcular |
-|---|---|
-| taxa de intervenção humana | proporção de `ajustar`/`recusar` sobre o total que chegou à Homologação |
-| densidade de retrabalho | média da coluna `runs` entre as tarefas finalizadas |
-| incidência de regressões | tarefas com `retries > 0` cuja run anterior havia passado - use a aba Execuções do painel, ou a tabela `execution_runs`, para o caso a caso |
-
-Uma ressalva honesta sobre a terceira: `tasks.csv` guarda o agregado, não o status de cada
-run. Para afirmar "o teste passou numa run e falhou na seguinte" é preciso olhar
-`execution_runs`, que o painel exibe por tarefa.
-
-## Fora de escopo, por decisão
-
-Autenticação real, multi-tenancy, CI, Alembic, PR remoto no GitHub, Langfuse, LangGraph como
-dependência formal, RBAC real, sub-DAGs, replanejamento automático, prospecção competitiva,
-múltiplas zonas simultâneas e geração de componentes React em runtime.
-
-A lista completa, com a justificativa de cada item, está em
-[`docs/scope-and-constraints.md`](docs/scope-and-constraints.md) - é a referência para citar
-no TCC. Nenhum item de lá deve ser implementado sem pedido explícito.
+MIT. Veja o arquivo `LICENSE`.

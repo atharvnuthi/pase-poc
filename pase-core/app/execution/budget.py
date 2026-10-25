@@ -58,7 +58,7 @@ def teto_de(task: Task, plano_tokens_estimated: int) -> int:
     """Teto em tokens para a tarefa inteira.
 
     `demo_budget_cap_tokens` sobrepõe tudo, inclusive o piso - é o instrumento do
-    D6(b), que precisa forçar a interrupção. Em seguida vem `budget_cap_tokens`,
+    D5(b), que precisa forçar a interrupção. Em seguida vem `budget_cap_tokens`,
     que é a decisão de uma pessoa no painel.
 
     Fora do modo demo, o teto tem um piso. A estimativa do P4 é um palpite do

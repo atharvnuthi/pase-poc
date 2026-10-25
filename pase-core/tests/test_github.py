@@ -1,4 +1,4 @@
-"""Integração com o GitHub (Fase 5) - desligada por padrão.
+"""Integração com o GitHub - desligada por padrão.
 
 O que mais importa aqui é o caminho **desligado**: sem token, nada muda no
 comportamento do sistema. Uma integração opcional que altera o fluxo mesmo

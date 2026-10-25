@@ -1,6 +1,6 @@
 """API do FinTrack - o produto-alvo que o PASE evolui (SPEC-02).
 
-A superfície desta API é contrato congelado ao fim da F1: o Executor do PASE a
+A superfície desta API é contrato congelado desde a primeira versão: o Executor do PASE a
 edita de forma autônoma e depende de `tests/test_api.py` como rede de regressão.
 """
 
@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FinTrack API", version="1.0.0", lifespan=lifespan)
 
-# PoC local, sem autenticação (CLAUDE.md).
+# PoC local, sem autenticação (README.md).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001"],
