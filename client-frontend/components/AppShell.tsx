@@ -54,6 +54,7 @@ export default function AppShell({
   }
 
   const iniciais = persona.name.trim().charAt(0).toUpperCase();
+  const themeActionLabel = theme === "light" ? "Usar tema escuro" : "Usar tema claro";
 
   function toggleTheme() {
     if (!persona) return;
@@ -100,8 +101,14 @@ export default function AppShell({
               </span>
               <span className="text-sm font-medium">{persona.name}</span>
             </span>
-            <Botao variante="neutro" tamanho="sm" onClick={toggleTheme}>
-              {theme === "light" ? "Usar tema escuro" : "Usar tema claro"}
+            <Botao
+              variante="neutro"
+              tamanho="sm"
+              onClick={toggleTheme}
+              aria-label={themeActionLabel}
+              title={themeActionLabel}
+            >
+              {theme === "light" ? <MoonIcon /> : <SunIcon />}
             </Botao>
             <Botao
               variante="neutro"
@@ -121,5 +128,42 @@ export default function AppShell({
 
       <SuggestModal userId={persona.id} />
     </div>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      data-icon="moon"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14.5 12.5A5.5 5.5 0 0 1 7.5 5.5a6 6 0 1 0 7 7Z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      data-icon="sun"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="10" cy="10" r="3.5" />
+      <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4" />
+    </svg>
   );
 }

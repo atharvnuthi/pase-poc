@@ -23,9 +23,10 @@ describe("tema por persona", () => {
 
     renderShell();
 
-    expect(
-      await screen.findByRole("button", { name: "Usar tema escuro" }),
-    ).toBeVisible();
+    const botaoTema = await screen.findByRole("button", { name: "Usar tema escuro" });
+    expect(botaoTema).toBeVisible();
+    expect(botaoTema.querySelector('svg[data-icon="moon"]')).toBeInTheDocument();
+    expect(botaoTema.textContent?.trim()).toBe("");
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
     expect(document.documentElement.style.colorScheme).toBe("light");
   });
@@ -40,7 +41,10 @@ describe("tema por persona", () => {
 
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     expect(document.documentElement.style.colorScheme).toBe("dark");
-    expect(screen.getByRole("button", { name: "Usar tema claro" })).toBeVisible();
+
+    const botaoTema = screen.getByRole("button", { name: "Usar tema claro" });
+    expect(botaoTema).toBeVisible();
+    expect(botaoTema.querySelector('svg[data-icon="sun"]')).toBeInTheDocument();
   });
 
   it("mantém o tema escuro ao recarregar para a mesma persona", async () => {
@@ -54,7 +58,9 @@ describe("tema por persona", () => {
     unmount();
     renderShell();
 
-    expect(await screen.findByRole("button", { name: "Usar tema claro" })).toBeVisible();
+    const botaoTema = await screen.findByRole("button", { name: "Usar tema claro" });
+    expect(botaoTema).toBeVisible();
+    expect(botaoTema.querySelector('svg[data-icon="sun"]')).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     expect(document.documentElement.style.colorScheme).toBe("dark");
   });
@@ -66,14 +72,18 @@ describe("tema por persona", () => {
     const primeiraMontagem = renderShell();
 
     await user.click(await screen.findByRole("button", { name: "Usar tema escuro" }));
+
+    const botaoTemaAna = screen.getByRole("button", { name: "Usar tema claro" });
+    expect(botaoTemaAna.querySelector('svg[data-icon="sun"]')).toBeInTheDocument();
+
     primeiraMontagem.unmount();
 
     entrarComo(2, "Bruno");
     const segundaMontagem = renderShell();
 
-    expect(
-      await screen.findByRole("button", { name: "Usar tema escuro" }),
-    ).toBeVisible();
+    const botaoTemaBruno = await screen.findByRole("button", { name: "Usar tema escuro" });
+    expect(botaoTemaBruno).toBeVisible();
+    expect(botaoTemaBruno.querySelector('svg[data-icon="moon"]')).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
     expect(document.documentElement.style.colorScheme).toBe("light");
     segundaMontagem.unmount();
@@ -81,7 +91,11 @@ describe("tema por persona", () => {
     entrarComo(1, "Ana");
     renderShell();
 
-    expect(await screen.findByRole("button", { name: "Usar tema claro" })).toBeVisible();
+    const botaoTemaAnaRestaurado = await screen.findByRole("button", {
+      name: "Usar tema claro",
+    });
+    expect(botaoTemaAnaRestaurado).toBeVisible();
+    expect(botaoTemaAnaRestaurado.querySelector('svg[data-icon="sun"]')).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     expect(document.documentElement.style.colorScheme).toBe("dark");
   });
@@ -95,17 +109,36 @@ describe("tema por persona", () => {
     await user.click(await screen.findByRole("button", { name: "Usar tema escuro" }));
     await user.click(screen.getByRole("button", { name: "Usar tema claro" }));
 
+    const botaoTema = screen.getByRole("button", { name: "Usar tema escuro" });
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
     expect(document.documentElement.style.colorScheme).toBe("light");
-    expect(screen.getByRole("button", { name: "Usar tema escuro" })).toBeVisible();
+    expect(botaoTema).toBeVisible();
+    expect(botaoTema.querySelector('svg[data-icon="moon"]')).toBeInTheDocument();
 
     unmount();
     renderShell();
 
-    expect(
-      await screen.findByRole("button", { name: "Usar tema escuro" }),
-    ).toBeVisible();
+    const botaoTemaPersistido = await screen.findByRole("button", { name: "Usar tema escuro" });
+    expect(botaoTemaPersistido).toBeVisible();
+    expect(botaoTemaPersistido.querySelector('svg[data-icon="moon"]')).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
     expect(document.documentElement.style.colorScheme).toBe("light");
+  });
+
+  it("mantém o botão de tema sem texto visível em ambos os estados", async () => {
+    entrarComo(1, "Ana");
+
+    renderShell();
+
+    const user = userEvent.setup();
+    const botaoClaro = await screen.findByRole("button", { name: "Usar tema escuro" });
+    expect(botaoClaro.textContent?.trim()).toBe("");
+    expect(botaoClaro.querySelector('svg[data-icon="moon"]')).toBeInTheDocument();
+
+    await user.click(botaoClaro);
+
+    const botaoEscuro = screen.getByRole("button", { name: "Usar tema claro" });
+    expect(botaoEscuro.textContent?.trim()).toBe("");
+    expect(botaoEscuro.querySelector('svg[data-icon="sun"]')).toBeInTheDocument();
   });
 });
